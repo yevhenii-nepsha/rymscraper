@@ -115,6 +115,10 @@ def build_parser() -> argparse.ArgumentParser:
         "file",
         help="Search results file (.json)",
     )
+    p_download.add_argument(
+        "--downloads-dir",
+        help="Path to slskd downloads directory",
+    )
 
     # go (all-in-one)
     p_go = subs.add_parser(
@@ -447,7 +451,14 @@ def _cmd_download(
     wait_for_downloads(client, usernames, timeout=1800)
 
     # Organize into Artist/Album structure
-    downloads_dir = settings.download_dir
+    downloads_dir_arg = getattr(
+        args,
+        "downloads_dir",
+        None,
+    )
+    downloads_dir = (
+        Path(downloads_dir_arg) if downloads_dir_arg else settings.download_dir
+    )
     moved, org_skipped = organize_downloads(
         results,
         downloads_dir,

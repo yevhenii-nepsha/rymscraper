@@ -29,7 +29,7 @@ class AppSettings:
     search_timeout: int = 30
     min_files: int = 1
     download_dir: Path = field(
-        default_factory=lambda: Path.home() / "Music",
+        default_factory=lambda: Path("downloads"),
     )
 
 
@@ -83,7 +83,7 @@ def load_settings(
 
     output_dir_raw = download_cfg.get(
         "output_dir",
-        str(Path.home() / "Music"),
+        "downloads",
     )
     download_dir = Path(
         os.path.expanduser(str(output_dir_raw)),
