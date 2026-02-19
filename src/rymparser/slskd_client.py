@@ -80,14 +80,43 @@ def search_albums(
         query,
     )
 
-    deadline = time.time() + timeout + 5
+    # Poll until complete or responses stabilize.
+    # slskd only returns responses after a search is
+    # Completed. We stop the search early once response
+    # count stabilizes to avoid waiting for the full
+    # searchTimeout.
+    stable_rounds = 0
+    prev_count = 0
+    resp_count = 0
+    deadline = time.time() + timeout + 10
     while time.time() < deadline:
         state = client.searches.state(search_id)
+        resp_count = int(
+            state.get("responseCount", 0),
+        )
         if state.get("isComplete", False):
             break
+        if resp_count > 0 and resp_count == prev_count:
+            stable_rounds += 1
+            if stable_rounds >= 5:
+                logger.debug(
+                    "Responses stabilized at %d, stopping search early",
+                    resp_count,
+                )
+                client.searches.stop(search_id)
+                # Wait briefly for state to update
+                time.sleep(1)
+                break
+        else:
+            stable_rounds = 0
+        prev_count = resp_count
         time.sleep(1)
     else:
-        logger.warning("Search timed out: %s", query)
+        logger.warning(
+            "Search timed out for: %s (%d responses so far)",
+            query,
+            resp_count,
+        )
 
     try:
         responses: list[SearchResponse] = client.searches.search_responses(
