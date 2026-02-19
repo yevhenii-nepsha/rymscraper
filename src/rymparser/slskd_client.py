@@ -197,14 +197,17 @@ def _completed_directories(
     transfers: list[dict[str, Any]],
     usernames: set[str],
 ) -> set[str]:
-    """Find directory names where all files are done.
+    """Find directories where all files are done.
+
+    Directory paths are normalized (backslashes to forward
+    slashes) to match across different data sources.
 
     Args:
         transfers: Raw transfer list from slskd API.
         usernames: Set of usernames to check.
 
     Returns:
-        Set of directory names that are fully complete.
+        Set of normalized directory paths that are complete.
     """
     completed: set[str] = set()
     for t in transfers:
@@ -218,5 +221,8 @@ def _completed_directories(
                 str(f.get("state", "")) in _COMPLETED_STATES for f in files
             )
             if all_done:
-                completed.add(str(d.get("directory", "")))
+                raw_dir = str(d.get("directory", ""))
+                completed.add(
+                    raw_dir.replace("\\", "/"),
+                )
     return completed

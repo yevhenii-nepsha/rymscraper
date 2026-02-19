@@ -165,6 +165,29 @@ class TestCompletedDirectories:
         result = _completed_directories(transfers, {"user1"})
         assert result == set()
 
+    def test_normalizes_backslashes(self) -> None:
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": ("Music\\Artist\\Album"),
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": ("Completed, Succeeded"),
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert result == {"Music/Artist/Album"}
+
     def test_errored_counts_as_complete(self) -> None:
         transfers = [
             {

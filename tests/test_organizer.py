@@ -221,11 +221,11 @@ class TestBuildDirToAlbumMap:
         }
         mapping = _build_dir_to_album_map(results)
         assert mapping == {
-            "Album": (
+            "Music/Artist/Album": (
                 "Artist - Album (2020)",
                 "Music\\Artist\\Album",
             ),
-            "EP": (
+            "@@user/Library/Band/EP": (
                 "Band - EP (2021)",
                 "@@user\\Library\\Band\\EP",
             ),
@@ -242,7 +242,7 @@ class TestBuildDirToAlbumMap:
         }
         mapping = _build_dir_to_album_map(results)
         assert len(mapping) == 1
-        assert "EP" in mapping
+        assert "Music/Band/EP" in mapping
 
     def test_skips_empty_directory(self) -> None:
         results = {
@@ -284,17 +284,18 @@ class TestWaitAndOrganize:
         mock_client = MagicMock()
         # Poll 1: only Album A done
         # Poll 2: both done
+        # slskd returns full remote paths with backslashes
         mock_client.transfers.get_all_downloads.side_effect = [
             [
                 {
                     "username": "u1",
                     "directories": [
                         {
-                            "directory": "Album A",
+                            "directory": ("Music\\Art1\\Album A"),
                             "files": [
                                 {
                                     "filename": "01.flac",
-                                    "state": "Completed, Succeeded",
+                                    "state": ("Completed, Succeeded"),
                                 },
                             ],
                         },
@@ -304,7 +305,7 @@ class TestWaitAndOrganize:
                     "username": "u2",
                     "directories": [
                         {
-                            "directory": "Album B",
+                            "directory": ("Music\\Art2\\Album B"),
                             "files": [
                                 {
                                     "filename": "01.flac",
@@ -320,11 +321,11 @@ class TestWaitAndOrganize:
                     "username": "u1",
                     "directories": [
                         {
-                            "directory": "Album A",
+                            "directory": ("Music\\Art1\\Album A"),
                             "files": [
                                 {
                                     "filename": "01.flac",
-                                    "state": "Completed, Succeeded",
+                                    "state": ("Completed, Succeeded"),
                                 },
                             ],
                         },
@@ -334,11 +335,11 @@ class TestWaitAndOrganize:
                     "username": "u2",
                     "directories": [
                         {
-                            "directory": "Album B",
+                            "directory": ("Music\\Art2\\Album B"),
                             "files": [
                                 {
                                     "filename": "01.flac",
-                                    "state": "Completed, Succeeded",
+                                    "state": ("Completed, Succeeded"),
                                 },
                             ],
                         },
@@ -391,11 +392,11 @@ class TestWaitAndOrganize:
                 "username": "u1",
                 "directories": [
                     {
-                        "directory": "Album A",
+                        "directory": ("Music\\Art1\\Album A"),
                         "files": [
                             {
                                 "filename": "01.flac",
-                                "state": "Completed, Succeeded",
+                                "state": ("Completed, Succeeded"),
                             },
                         ],
                     },
@@ -405,7 +406,7 @@ class TestWaitAndOrganize:
                 "username": "u2",
                 "directories": [
                     {
-                        "directory": "Album B",
+                        "directory": ("Music\\Art2\\Album B"),
                         "files": [
                             {
                                 "filename": "01.flac",

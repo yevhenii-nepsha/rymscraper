@@ -54,16 +54,28 @@ def _source_dir_name(directory: str) -> str:
     return PurePosixPath(normalized).name
 
 
+def _normalize_path(directory: str) -> str:
+    """Normalize remote path separators to forward slash.
+
+    Args:
+        directory: Remote directory path.
+
+    Returns:
+        Path with backslashes replaced by forward slashes.
+    """
+    return directory.replace("\\", "/")
+
+
 def _build_dir_to_album_map(
     results: dict[str, Any],
 ) -> dict[str, tuple[str, str]]:
-    """Build mapping from source folder name to album info.
+    """Build mapping from normalized remote path to album info.
 
     Args:
         results: Search results dict (album_str -> data).
 
     Returns:
-        Dict mapping folder name -> (album_str, remote_dir).
+        Dict mapping normalized path -> (album_str, remote_dir).
     """
     mapping: dict[str, tuple[str, str]] = {}
     for album_str, data in results.items():
@@ -73,8 +85,8 @@ def _build_dir_to_album_map(
         remote_dir = str(data.get("directory", ""))
         if not remote_dir:
             continue
-        folder_name = _source_dir_name(remote_dir)
-        mapping[folder_name] = (album_str, remote_dir)
+        key = _normalize_path(remote_dir)
+        mapping[key] = (album_str, remote_dir)
     return mapping
 
 
