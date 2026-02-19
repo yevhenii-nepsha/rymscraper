@@ -1,0 +1,12 @@
+[project]
+name = "rymparser"
+version = "0.1.0"
+description = "Parse RYM list pages into Artist - Album (Year) format for Soulseek search"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "playwright",
+    "playwright-stealth",
+    "beautifulsoup4",
+    "lxml",
+]
