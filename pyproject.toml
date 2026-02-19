@@ -9,6 +9,7 @@ dependencies = [
     "playwright-stealth",
     "beautifulsoup4",
     "lxml",
+    "slskd-api",
 ]
 
 [dependency-groups]
@@ -52,5 +53,6 @@ module = [
     "playwright_stealth.*",
     "bs4.*",
     "lxml.*",
+    "slskd_api.*",
 ]
 ignore_missing_imports = true

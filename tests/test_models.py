@@ -1,5 +1,7 @@
 """Tests for Album model."""
 
+import pytest
+
 from rymparser.models import Album
 
 
@@ -28,3 +30,25 @@ class TestAlbum:
             raise AssertionError("Should have raised FrozenInstanceError")
         except AttributeError:
             pass
+
+
+class TestAlbumFromLine:
+    def test_with_year(self) -> None:
+        album = Album.from_line("Radiohead - OK Computer (1997)")
+        assert album == Album(
+            "Radiohead",
+            "OK Computer",
+            "1997",
+        )
+
+    def test_without_year(self) -> None:
+        album = Album.from_line("Radiohead - OK Computer")
+        assert album == Album(
+            "Radiohead",
+            "OK Computer",
+            "",
+        )
+
+    def test_invalid_format(self) -> None:
+        with pytest.raises(ValueError, match="parse"):
+            Album.from_line("no dash here")
