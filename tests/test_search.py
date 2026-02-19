@@ -5,6 +5,7 @@ from __future__ import annotations
 from rymparser.models import Album
 from rymparser.search import (
     AlbumSearchResult,
+    _file_ext,
     build_query,
     filter_responses,
     rank_results,
@@ -51,6 +52,29 @@ def _make_file(
         "code": 1,
         "isLocked": False,
     }
+
+
+class TestFileExt:
+    def test_uses_extension_field(self) -> None:
+        f = {"extension": "flac", "filename": "x.flac"}
+        assert _file_ext(f) == "flac"
+
+    def test_falls_back_to_filename(self) -> None:
+        """When extension is empty, extract from filename."""
+        f = {"extension": "", "filename": "01 - Track.flac"}
+        assert _file_ext(f) == "flac"
+
+    def test_empty_extension_mp3(self) -> None:
+        f = {"extension": "", "filename": "song.mp3"}
+        assert _file_ext(f) == "mp3"
+
+    def test_no_extension_no_dot(self) -> None:
+        f = {"extension": "", "filename": "README"}
+        assert _file_ext(f) == ""
+
+    def test_normalizes_dot_prefix(self) -> None:
+        f = {"extension": ".FLAC", "filename": "x"}
+        assert _file_ext(f) == "flac"
 
 
 class TestBuildQuery:
@@ -121,6 +145,43 @@ class TestFilterResponses:
         )
         results = filter_responses(responses, settings)
         assert len(results) == 0
+
+    def test_empty_extension_uses_filename(self) -> None:
+        """Real slskd bug: extension="" but filename has ext."""
+        responses = [
+            _make_response(
+                "u1",
+                [
+                    {
+                        "filename": "Music\\Artist\\01.flac",
+                        "size": 30_000_000,
+                        "extension": "",
+                        "bitDepth": 16,
+                        "sampleRate": 44100,
+                        "length": 240,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                    {
+                        "filename": "Music\\Artist\\02.flac",
+                        "size": 30_000_000,
+                        "extension": "",
+                        "bitDepth": 16,
+                        "sampleRate": 44100,
+                        "length": 240,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                ],
+            ),
+        ]
+        settings = AppSettings(
+            preferred_formats=["flac", "mp3"],
+            min_files=1,
+        )
+        results = filter_responses(responses, settings)
+        assert len(results) == 1
+        assert results[0].format == "flac"
 
     def test_mp3_320_passes(self) -> None:
         responses = [

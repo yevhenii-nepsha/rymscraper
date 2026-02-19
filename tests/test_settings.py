@@ -45,7 +45,7 @@ class TestAppSettings:
         assert settings.preferred_formats == ["flac", "mp3"]
         assert settings.min_bitrate == 320
         assert settings.search_timeout == 30
-        assert settings.min_files == 3
+        assert settings.min_files == 1
 
     def test_frozen(self) -> None:
         settings = AppSettings()

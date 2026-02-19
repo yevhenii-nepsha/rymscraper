@@ -42,13 +42,41 @@ def build_query(album: Album) -> str:
     return f"{album.artist} {album.title}"
 
 
+def _normalize_ext(raw: str) -> str:
+    """Normalize a file extension to lowercase without dot."""
+    return raw.lower().lstrip(".")
+
+
+def _file_ext(f: dict[str, Any]) -> str:
+    """Extract normalized extension from a file dict.
+
+    Uses the 'extension' field if non-empty, otherwise
+    falls back to extracting from 'filename'.
+
+    Args:
+        f: slskd file dict with extension/filename.
+
+    Returns:
+        Lowercase extension without dot, or "".
+    """
+    ext = _normalize_ext(str(f.get("extension", "")))
+    if ext:
+        return ext
+    filename = str(f.get("filename", ""))
+    if "." in filename:
+        return _normalize_ext(
+            filename.rsplit(".", maxsplit=1)[-1],
+        )
+    return ""
+
+
 def _dominant_format(
     files: list[dict[str, Any]],
 ) -> str:
     """Determine the dominant audio format in files."""
     counts: dict[str, int] = {}
     for f in files:
-        ext = str(f.get("extension", "")).lower()
+        ext = _file_ext(f)
         if ext:
             counts[ext] = counts.get(ext, 0) + 1
     if not counts:
@@ -80,20 +108,45 @@ def filter_responses(
     results: list[AlbumSearchResult] = []
 
     for resp in responses:
+        username = str(resp.get("username", ""))
         files = resp.get("files", [])
+        all_exts = [ext for f in files if (ext := _file_ext(f))]
+        logger.debug(
+            "Response from %s: %d files, extensions: %s, keys: %s",
+            username,
+            len(files),
+            sorted(set(all_exts)),
+            sorted(files[0].keys()) if files else "N/A",
+        )
         audio_files = [
-            f
-            for f in files
-            if str(f.get("extension", "")).lower() in settings.preferred_formats
+            f for f in files if _file_ext(f) in settings.preferred_formats
         ]
 
         if len(audio_files) < settings.min_files:
+            logger.debug(
+                "Rejected %s: %d/%d files match "
+                "formats %s (need %d). "
+                "Extensions found: %s",
+                username,
+                len(audio_files),
+                len(files),
+                settings.preferred_formats,
+                settings.min_files,
+                sorted(set(all_exts)),
+            )
             continue
 
         fmt = _dominant_format(audio_files)
         bitrate = _avg_bitrate(audio_files)
 
         if fmt not in LOSSLESS_FORMATS and bitrate < settings.min_bitrate:
+            logger.debug(
+                "Rejected %s: %s %dkbps < min %dkbps",
+                username,
+                fmt,
+                bitrate,
+                settings.min_bitrate,
+            )
             continue
 
         first_file = str(audio_files[0].get("filename", ""))

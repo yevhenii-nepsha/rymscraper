@@ -27,7 +27,7 @@ class AppSettings:
     )
     min_bitrate: int = 320
     search_timeout: int = 30
-    min_files: int = 3
+    min_files: int = 1
     download_dir: Path = field(
         default_factory=lambda: Path.home() / "Music",
     )
@@ -78,8 +78,8 @@ def load_settings(
     min_bitrate = min_bitrate_raw if isinstance(min_bitrate_raw, int) else 320
     timeout_raw = search_cfg.get("search_timeout", 30)
     search_timeout = timeout_raw if isinstance(timeout_raw, int) else 30
-    min_files_raw = search_cfg.get("min_files", 3)
-    min_files = min_files_raw if isinstance(min_files_raw, int) else 3
+    min_files_raw = search_cfg.get("min_files", 1)
+    min_files = min_files_raw if isinstance(min_files_raw, int) else 1
 
     output_dir_raw = download_cfg.get(
         "output_dir",

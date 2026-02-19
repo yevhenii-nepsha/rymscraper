@@ -100,6 +100,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         help="Override minimum bitrate",
     )
+    p_search.add_argument(
+        "--min-files",
+        type=int,
+        help="Minimum audio files per result",
+    )
 
     # download
     p_download = subs.add_parser(
@@ -253,6 +258,16 @@ def _cmd_search(
             min_files=settings.min_files,
             download_dir=settings.download_dir,
         )
+    if getattr(args, "min_files", None):
+        settings = AppSettings(
+            slskd_host=settings.slskd_host,
+            slskd_api_key=settings.slskd_api_key,
+            preferred_formats=(settings.preferred_formats),
+            min_bitrate=settings.min_bitrate,
+            search_timeout=settings.search_timeout,
+            min_files=args.min_files,
+            download_dir=settings.download_dir,
+        )
 
     try:
         client = create_client(settings)
@@ -325,7 +340,12 @@ def _cmd_search(
                     f"{slot} | @{r.username}"
                 )
             print("  [0] Skip")
-            choice = input("  Choose [1]: ").strip()
+            try:
+                choice = input(
+                    "  Choose [1]: ",
+                ).strip()
+            except EOFError:
+                choice = "1"
             if choice == "0":
                 all_results[str(album)] = None
                 continue
