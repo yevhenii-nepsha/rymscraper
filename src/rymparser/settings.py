@@ -74,15 +74,12 @@ def load_settings(
     preferred_formats = (
         list(formats_raw) if isinstance(formats_raw, list) else ["flac", "mp3"]
     )
-    min_bitrate = int(
-        search_cfg.get("min_bitrate", 320),  # type: ignore[arg-type]
-    )
-    search_timeout = int(
-        search_cfg.get("search_timeout", 30),  # type: ignore[arg-type]
-    )
-    min_files = int(
-        search_cfg.get("min_files", 3),  # type: ignore[arg-type]
-    )
+    min_bitrate_raw = search_cfg.get("min_bitrate", 320)
+    min_bitrate = min_bitrate_raw if isinstance(min_bitrate_raw, int) else 320
+    timeout_raw = search_cfg.get("search_timeout", 30)
+    search_timeout = timeout_raw if isinstance(timeout_raw, int) else 30
+    min_files_raw = search_cfg.get("min_files", 3)
+    min_files = min_files_raw if isinstance(min_files_raw, int) else 3
 
     output_dir_raw = download_cfg.get(
         "output_dir",
