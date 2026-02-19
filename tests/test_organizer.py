@@ -7,6 +7,7 @@ from pathlib import Path
 from rymparser.models import Album
 from rymparser.organizer import (
     _album_target_dir,
+    _organize_album,
     _source_dir_name,
     organize_downloads,
 )
@@ -143,3 +144,58 @@ class TestOrganizeDownloads:
         assert skipped == 0
         assert (dl / "Artist1" / "Album A (2020)" / "01.flac").exists()
         assert (dl / "Artist2" / "Album B (2021)" / "01.flac").exists()
+
+
+class TestOrganizeAlbum:
+    def test_moves_single_album(self, tmp_path: Path) -> None:
+        dl = tmp_path / "downloads"
+        src = dl / "Some Album (2020)"
+        src.mkdir(parents=True)
+        (src / "01.flac").write_text("audio")
+        ok = _organize_album(
+            "Artist - Some Album (2020)",
+            "Music\\Artist\\Some Album (2020)",
+            dl,
+        )
+        assert ok is True
+        target = dl / "Artist" / "Some Album (2020)"
+        assert target.exists()
+        assert (target / "01.flac").read_text() == "audio"
+        assert not src.exists()
+
+    def test_returns_false_missing_source(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        dl = tmp_path / "downloads"
+        dl.mkdir()
+        ok = _organize_album(
+            "Artist - Album (2020)",
+            "Music\\Artist\\Album",
+            dl,
+        )
+        assert ok is False
+
+    def test_returns_false_bad_album_str(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        dl = tmp_path / "downloads"
+        (dl / "Album").mkdir(parents=True)
+        ok = _organize_album("bad string", "Album", dl)
+        assert ok is False
+
+    def test_returns_false_target_exists(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        dl = tmp_path / "downloads"
+        (dl / "Album").mkdir(parents=True)
+        (dl / "Artist" / "Album (2020)").mkdir(parents=True)
+        ok = _organize_album(
+            "Artist - Album (2020)",
+            "Music\\Artist\\Album",
+            dl,
+        )
+        assert ok is False
+        assert (dl / "Album").exists()

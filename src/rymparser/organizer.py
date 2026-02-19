@@ -49,6 +49,75 @@ def _source_dir_name(directory: str) -> str:
     return PurePosixPath(normalized).name
 
 
+def _organize_album(
+    album_str: str,
+    remote_dir: str,
+    downloads_dir: Path,
+) -> bool:
+    """Move a single downloaded album into Artist/Album structure.
+
+    Args:
+        album_str: Album string in 'Artist - Title (Year)' format.
+        remote_dir: Remote directory path from search result.
+        downloads_dir: Root downloads directory.
+
+    Returns:
+        True if the album was moved successfully, False otherwise.
+    """
+    folder_name = _source_dir_name(remote_dir)
+    source = downloads_dir / folder_name
+
+    if not source.exists():
+        logger.warning(
+            "Source not found: %s (for %s)",
+            source,
+            album_str,
+        )
+        return False
+
+    try:
+        album = Album.from_line(album_str)
+    except ValueError:
+        logger.warning(
+            "Cannot parse album: %s",
+            album_str,
+        )
+        return False
+
+    target = _album_target_dir(album, downloads_dir)
+
+    if source == target:
+        logger.debug(
+            "Already organized: %s",
+            album_str,
+        )
+        return True
+
+    if target.exists():
+        logger.warning(
+            "Target already exists: %s",
+            target,
+        )
+        return False
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.move(str(source), str(target))
+    except OSError:
+        logger.exception(
+            "Failed to move: %s -> %s",
+            source.name,
+            target.relative_to(downloads_dir),
+        )
+        return False
+    logger.info(
+        "Moved: %s -> %s",
+        source.name,
+        target.relative_to(downloads_dir),
+    )
+    return True
+
+
 def organize_downloads(
     results: dict[str, Any],
     downloads_dir: Path,
@@ -80,53 +149,9 @@ def organize_downloads(
             skipped += 1
             continue
 
-        folder_name = _source_dir_name(remote_dir)
-        source = downloads_dir / folder_name
-
-        if not source.exists():
-            logger.warning(
-                "Source not found: %s (for %s)",
-                source,
-                album_str,
-            )
-            skipped += 1
-            continue
-
-        try:
-            album = Album.from_line(album_str)
-        except ValueError:
-            logger.warning(
-                "Cannot parse album: %s",
-                album_str,
-            )
-            skipped += 1
-            continue
-
-        target = _album_target_dir(album, downloads_dir)
-
-        if source == target:
-            logger.debug(
-                "Already organized: %s",
-                album_str,
-            )
+        if _organize_album(album_str, remote_dir, downloads_dir):
             moved += 1
-            continue
-
-        if target.exists():
-            logger.warning(
-                "Target already exists: %s",
-                target,
-            )
+        else:
             skipped += 1
-            continue
-
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(source), str(target))
-        logger.info(
-            "Moved: %s -> %s",
-            source.name,
-            target.relative_to(downloads_dir),
-        )
-        moved += 1
 
     return moved, skipped
