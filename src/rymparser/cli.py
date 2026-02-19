@@ -389,12 +389,11 @@ def _cmd_download(
         args: Parsed CLI arguments.
         settings: Application settings.
     """
-    from rymparser.organizer import organize_downloads
+    from rymparser.organizer import wait_and_organize
     from rymparser.slskd_client import (
         SlskdError,
         create_client,
         enqueue_download,
-        wait_for_downloads,
     )
 
     input_path = Path(args.file)
@@ -447,10 +446,7 @@ def _cmd_download(
         skipped,
     )
 
-    # Wait for all downloads to finish
-    wait_for_downloads(client, usernames, timeout=1800)
-
-    # Organize into Artist/Album structure
+    # Wait for downloads and organize incrementally
     downloads_dir_arg = getattr(
         args,
         "downloads_dir",
@@ -459,14 +455,16 @@ def _cmd_download(
     downloads_dir = (
         Path(downloads_dir_arg) if downloads_dir_arg else settings.download_dir
     )
-    moved, org_skipped = organize_downloads(
+    moved, skipped_org = wait_and_organize(
+        client,
         results,
+        usernames,
         downloads_dir,
     )
     logger.info(
-        "Organized: %d moved, %d skipped",
+        "Done: %d organized, %d skipped",
         moved,
-        org_skipped,
+        skipped_org,
     )
 
 

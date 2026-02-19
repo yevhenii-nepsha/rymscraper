@@ -1,8 +1,9 @@
 # rymparser
 
 Parse [RateYourMusic](https://rateyourmusic.com) list pages into
-`Artist - Album (Year)` format for
-[Soulseek](http://www.slsknet.org/) search.
+`Artist - Album (Year)` format, then search and download from
+[Soulseek](http://www.slsknet.org/) via
+[slskd](https://github.com/slskd/slskd).
 
 Handles Cloudflare Turnstile anti-bot challenges using a headed
 Chromium browser with stealth plugins and a persistent browser
@@ -17,76 +18,146 @@ uv sync
 uv run playwright install chromium
 ```
 
-## Usage
+## Quick Start
 
 ```bash
-# Parse RYM list to text file
+# 1. Parse a RYM list
 uv run rymparser parse https://rateyourmusic.com/list/user/best-albums/
 
-# Custom output file
-uv run rymparser parse -o albums.txt https://rateyourmusic.com/list/user/best-albums/
+# 2. Search Soulseek (auto-select best result per album)
+uv run rymparser search --auto best-albums.txt
 
-# Headless mode (may be blocked by Cloudflare)
-uv run rymparser parse --headless https://rateyourmusic.com/list/user/best-albums/
+# 3. Download and organize into Artist/Album (Year)/
+uv run rymparser download best-albums.json
 
-# Verbose logging
-uv run rymparser -v parse https://rateyourmusic.com/list/user/best-albums/
+# Or do it all at once
+uv run rymparser go --auto https://rateyourmusic.com/list/user/best-albums/
 ```
 
-## Output format
+## Subcommands
+
+### `parse` -- scrape RYM list
+
+```bash
+uv run rymparser parse https://rateyourmusic.com/list/user/test/
+uv run rymparser parse -o albums.txt https://rateyourmusic.com/list/user/test/
+uv run rymparser parse --headless https://rateyourmusic.com/list/user/test/
+```
+
+| Flag | Description |
+|------|-------------|
+| `-o`, `--output` | Output filename (default: `{slug}.txt`) |
+| `--headless` | Run browser headless (may be blocked by Cloudflare) |
+
+Output format:
 
 ```
 Radiohead - OK Computer (1997)
-Björk - Homogenic (1997)
+Bjork - Homogenic (1997)
 Boards of Canada - Music Has the Right to Children (1998)
 ```
 
-## Soulseek Integration
+### `search` -- find albums on Soulseek
 
-rymparser can search and download albums from
-the Soulseek network via [slskd](https://github.com/slskd/slskd).
+```bash
+uv run rymparser search albums.txt              # interactive mode
+uv run rymparser search --auto albums.txt       # auto-select best
+uv run rymparser search --auto --format flac --min-bitrate 256 albums.txt
+uv run rymparser search --auto --min-files 3 albums.txt
+```
 
-### Quick Start (Docker)
+| Flag | Description |
+|------|-------------|
+| `-o`, `--output` | Output results file (default: `{input}.json`) |
+| `--auto` | Auto-select best result (skip interactive prompts) |
+| `--format` | Override preferred format (`flac`, `mp3`) |
+| `--min-bitrate` | Override minimum bitrate |
+| `--min-files` | Minimum audio files per result |
 
-1. Copy `.env.example` to `.env` and fill in your
-   Soulseek credentials:
+In interactive mode, shows top 5 results per album with format,
+bitrate, file count, upload speed, and queue status.
+
+### `download` -- download and organize
+
+```bash
+uv run rymparser download results.json
+uv run rymparser download --downloads-dir /path/to/downloads results.json
+```
+
+| Flag | Description |
+|------|-------------|
+| `--downloads-dir` | Path to slskd downloads directory |
+
+Downloads are enqueued via slskd, then the command waits for
+completion (up to 30 minutes). After all transfers finish,
+files are organized into `Artist/Album (Year)/` structure:
+
+```
+downloads/
+  Bowel Erosion/
+    Death Is the Orgasm of Life (2023)/
+      01 - Coughing Up Your Intestines.flac
+      02 - Found in Pieces.flac
+  Organ Failure/
+    Demo (2021)/
+    Neurologic Determination of Death (2022)/
+```
+
+### `go` -- all-in-one pipeline
+
+```bash
+uv run rymparser go https://rateyourmusic.com/list/user/test/
+uv run rymparser go --auto https://rateyourmusic.com/list/user/test/
+uv run rymparser go --auto --headless https://rateyourmusic.com/list/user/test/
+```
+
+Runs parse, search, and download in sequence.
+
+### Global flags
+
+| Flag | Description |
+|------|-------------|
+| `-v`, `--verbose` | Enable debug logging |
+| `--config` | Path to config.toml |
+
+## Docker
+
+1. Copy `.env.example` to `.env` and fill in credentials:
+
    ```bash
    cp .env.example .env
-   # Edit .env with your credentials
    ```
 
+   Required variables:
+
+   | Variable | Description |
+   |----------|-------------|
+   | `SLSK_USERNAME` | Soulseek login |
+   | `SLSK_PASSWORD` | Soulseek password |
+   | `SLSKD_API_KEY` | slskd API key (min 16 chars) |
+
 2. Start slskd:
+
    ```bash
    docker compose up -d slskd
    ```
 
-3. Parse a RYM list and search Soulseek:
+3. Run rymparser:
+
    ```bash
-   docker compose run rymparser go \
-     https://rateyourmusic.com/list/user/best-albums/ \
-     --auto
+   # Full pipeline
+   docker compose run rymparser go --auto \
+     https://rateyourmusic.com/list/user/best-albums/
+
+   # Or step by step
+   docker compose run rymparser parse https://rateyourmusic.com/list/user/test/
+   docker compose run rymparser search --auto test.txt
+   docker compose run rymparser download test.json
    ```
 
-### Subcommands
+Downloads appear in `./downloads/` on the host.
 
-```bash
-# Parse RYM list to text file
-rymparser parse https://rateyourmusic.com/list/user/test/
-
-# Search albums in Soulseek (interactive)
-rymparser search albums.txt
-
-# Search with auto-select
-rymparser search --auto albums.txt
-
-# Download from search results
-rymparser download results.json
-
-# All-in-one pipeline
-rymparser go https://rateyourmusic.com/list/user/test/
-```
-
-### Configuration
+## Configuration
 
 Create `~/.config/rymparser/config.toml`:
 
@@ -99,18 +170,19 @@ api_key = "your-api-key"
 preferred_formats = ["flac", "mp3"]
 min_bitrate = 320
 search_timeout = 30
+min_files = 1
 
 [download]
-output_dir = "~/Music"
+output_dir = "downloads"
 ```
 
-Or use environment variables: `SLSKD_HOST`,
-`SLSKD_API_KEY`.
+Environment variables `SLSKD_HOST` and `SLSKD_API_KEY` override
+config file values. Priority: env vars > config.toml > defaults.
 
 ## Development
 
 ```bash
-uv run pytest          # run tests
-uv run mypy src/       # type checking
+uv run pytest          # run tests (63 tests)
+uv run mypy src/       # type checking (strict)
 uv run ruff check .    # linting
 ```
