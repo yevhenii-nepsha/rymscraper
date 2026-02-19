@@ -88,9 +88,10 @@ uv run rymparser download --downloads-dir /path/to/downloads results.json
 |------|-------------|
 | `--downloads-dir` | Path to slskd downloads directory |
 
-Downloads are enqueued via slskd, then the command waits for
-completion (up to 30 minutes). After all transfers finish,
-files are organized into `Artist/Album (Year)/` structure:
+Downloads are enqueued via slskd. Each album is organized into
+`Artist/Album (Year)/` structure as soon as its download completes
+(no waiting for all albums to finish). If the 30-minute timeout
+is reached, already-organized albums are kept:
 
 ```
 downloads/
