@@ -193,6 +193,35 @@ _COMPLETED_STATES = frozenset(
 )
 
 
+def _completed_directories(
+    transfers: list[dict[str, Any]],
+    usernames: set[str],
+) -> set[str]:
+    """Find directory names where all files are done.
+
+    Args:
+        transfers: Raw transfer list from slskd API.
+        usernames: Set of usernames to check.
+
+    Returns:
+        Set of directory names that are fully complete.
+    """
+    completed: set[str] = set()
+    for t in transfers:
+        if t.get("username") not in usernames:
+            continue
+        for d in t.get("directories", []):
+            files = d.get("files", [])
+            if not files:
+                continue
+            all_done = all(
+                str(f.get("state", "")) in _COMPLETED_STATES for f in files
+            )
+            if all_done:
+                completed.add(str(d.get("directory", "")))
+    return completed
+
+
 def wait_for_downloads(
     client: slskd_api.SlskdClient,
     usernames: set[str],

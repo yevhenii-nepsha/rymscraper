@@ -9,6 +9,7 @@ import pytest
 from rymparser.settings import AppSettings
 from rymparser.slskd_client import (
     SlskdError,
+    _completed_directories,
     create_client,
     search_albums,
 )
@@ -89,3 +90,97 @@ class TestSearchAlbums:
         )
         assert len(results) == 1
         assert results[0]["username"] == "user1"
+
+
+class TestCompletedDirectories:
+    def test_finds_completed_dirs(self) -> None:
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "Album A",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "Completed, Succeeded",
+                            },
+                            {
+                                "filename": "02.flac",
+                                "state": "Completed, Succeeded",
+                            },
+                        ],
+                    },
+                    {
+                        "directory": "Album B",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "Completed, Succeeded",
+                            },
+                            {
+                                "filename": "02.flac",
+                                "state": "InProgress",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _completed_directories(transfers, {"user1"})
+        assert result == {"Album A"}
+
+    def test_ignores_other_users(self) -> None:
+        transfers = [
+            {
+                "username": "other",
+                "directories": [
+                    {
+                        "directory": "Album C",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "Completed, Succeeded",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _completed_directories(transfers, {"user1"})
+        assert result == set()
+
+    def test_empty_dir_is_not_complete(self) -> None:
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "Empty",
+                        "files": [],
+                    },
+                ],
+            },
+        ]
+        result = _completed_directories(transfers, {"user1"})
+        assert result == set()
+
+    def test_errored_counts_as_complete(self) -> None:
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "Album D",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "Completed, Errored",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        result = _completed_directories(transfers, {"user1"})
+        assert result == {"Album D"}
