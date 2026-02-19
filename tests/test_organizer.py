@@ -7,6 +7,7 @@ from pathlib import Path
 from rymparser.models import Album
 from rymparser.organizer import (
     _album_target_dir,
+    _build_dir_to_album_map,
     _organize_album,
     _source_dir_name,
     organize_downloads,
@@ -199,3 +200,54 @@ class TestOrganizeAlbum:
         )
         assert ok is False
         assert (dl / "Album").exists()
+
+
+class TestBuildDirToAlbumMap:
+    def test_builds_mapping(self) -> None:
+        results = {
+            "Artist - Album (2020)": {
+                "directory": "Music\\Artist\\Album",
+                "username": "u1",
+                "files": [],
+            },
+            "Band - EP (2021)": {
+                "directory": "@@user\\Library\\Band\\EP",
+                "username": "u2",
+                "files": [],
+            },
+        }
+        mapping = _build_dir_to_album_map(results)
+        assert mapping == {
+            "Album": (
+                "Artist - Album (2020)",
+                "Music\\Artist\\Album",
+            ),
+            "EP": (
+                "Band - EP (2021)",
+                "@@user\\Library\\Band\\EP",
+            ),
+        }
+
+    def test_skips_null_results(self) -> None:
+        results = {
+            "Artist - Album (2020)": None,
+            "Band - EP (2021)": {
+                "directory": "Music\\Band\\EP",
+                "username": "u1",
+                "files": [],
+            },
+        }
+        mapping = _build_dir_to_album_map(results)
+        assert len(mapping) == 1
+        assert "EP" in mapping
+
+    def test_skips_empty_directory(self) -> None:
+        results = {
+            "Artist - Album (2020)": {
+                "directory": "",
+                "username": "u1",
+                "files": [],
+            },
+        }
+        mapping = _build_dir_to_album_map(results)
+        assert len(mapping) == 0
