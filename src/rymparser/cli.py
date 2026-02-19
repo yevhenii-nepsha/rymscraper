@@ -385,10 +385,12 @@ def _cmd_download(
         args: Parsed CLI arguments.
         settings: Application settings.
     """
+    from rymparser.organizer import organize_downloads
     from rymparser.slskd_client import (
         SlskdError,
         create_client,
         enqueue_download,
+        wait_for_downloads,
     )
 
     input_path = Path(args.file)
@@ -396,7 +398,9 @@ def _cmd_download(
         logger.error("File not found: %s", input_path)
         sys.exit(1)
 
-    results: dict[str, object] = json.loads(input_path.read_text())
+    results: dict[str, object] = json.loads(
+        input_path.read_text(),
+    )
 
     try:
         client = create_client(settings)
@@ -406,6 +410,7 @@ def _cmd_download(
 
     queued = 0
     skipped = 0
+    usernames: set[str] = set()
     for album_str, data in results.items():
         if data is None:
             skipped += 1
@@ -419,6 +424,7 @@ def _cmd_download(
             enqueue_download(client, username, files)
             logger.info("Queued: %s", album_str)
             queued += 1
+            usernames.add(username)
         except SlskdError as exc:
             logger.error(
                 "Failed to queue %s: %s",
@@ -427,10 +433,29 @@ def _cmd_download(
             )
             skipped += 1
 
+    if queued == 0:
+        logger.info("Nothing to download.")
+        return
+
     logger.info(
-        "Download queued: %d albums. Skipped: %d. Monitor in slskd web UI.",
+        "Download queued: %d albums. Skipped: %d. Waiting for completion...",
         queued,
         skipped,
+    )
+
+    # Wait for all downloads to finish
+    wait_for_downloads(client, usernames, timeout=1800)
+
+    # Organize into Artist/Album structure
+    downloads_dir = settings.download_dir
+    moved, org_skipped = organize_downloads(
+        results,
+        downloads_dir,
+    )
+    logger.info(
+        "Organized: %d moved, %d skipped",
+        moved,
+        org_skipped,
     )
 
 
