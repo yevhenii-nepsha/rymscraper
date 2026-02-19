@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 from rymparser.models import Album
 from rymparser.organizer import (
@@ -11,6 +13,7 @@ from rymparser.organizer import (
     _organize_album,
     _source_dir_name,
     organize_downloads,
+    wait_and_organize,
 )
 
 
@@ -251,3 +254,222 @@ class TestBuildDirToAlbumMap:
         }
         mapping = _build_dir_to_album_map(results)
         assert len(mapping) == 0
+
+
+class TestWaitAndOrganize:
+    def test_organizes_incrementally(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Albums organized as directories complete."""
+        dl = tmp_path / "downloads"
+        (dl / "Album A").mkdir(parents=True)
+        (dl / "Album A" / "01.flac").write_text("a")
+        (dl / "Album B").mkdir(parents=True)
+        (dl / "Album B" / "01.flac").write_text("b")
+
+        results: dict[str, Any] = {
+            "Art1 - Album A (2020)": {
+                "directory": "Music\\Art1\\Album A",
+                "username": "u1",
+                "files": [],
+            },
+            "Art2 - Album B (2021)": {
+                "directory": "Music\\Art2\\Album B",
+                "username": "u2",
+                "files": [],
+            },
+        }
+
+        mock_client = MagicMock()
+        # Poll 1: only Album A done
+        # Poll 2: both done
+        mock_client.transfers.get_all_downloads.side_effect = [
+            [
+                {
+                    "username": "u1",
+                    "directories": [
+                        {
+                            "directory": "Album A",
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": "Completed, Succeeded",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "username": "u2",
+                    "directories": [
+                        {
+                            "directory": "Album B",
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": "InProgress",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            [
+                {
+                    "username": "u1",
+                    "directories": [
+                        {
+                            "directory": "Album A",
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": "Completed, Succeeded",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "username": "u2",
+                    "directories": [
+                        {
+                            "directory": "Album B",
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": "Completed, Succeeded",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        ]
+
+        with patch("rymparser.organizer.time.sleep"):
+            moved, skipped = wait_and_organize(
+                mock_client,
+                results,
+                {"u1", "u2"},
+                dl,
+                timeout=60,
+                poll_interval=1,
+            )
+
+        assert moved == 2
+        assert skipped == 0
+        assert (dl / "Art1" / "Album A (2020)" / "01.flac").exists()
+        assert (dl / "Art2" / "Album B (2021)" / "01.flac").exists()
+
+    def test_timeout_returns_partial(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """On timeout, already-organized albums stay."""
+        dl = tmp_path / "downloads"
+        (dl / "Album A").mkdir(parents=True)
+        (dl / "Album A" / "01.flac").write_text("a")
+
+        results: dict[str, Any] = {
+            "Art1 - Album A (2020)": {
+                "directory": "Music\\Art1\\Album A",
+                "username": "u1",
+                "files": [],
+            },
+            "Art2 - Album B (2021)": {
+                "directory": "Music\\Art2\\Album B",
+                "username": "u2",
+                "files": [],
+            },
+        }
+
+        mock_client = MagicMock()
+        # Album A complete, Album B never completes
+        mock_client.transfers.get_all_downloads.return_value = [
+            {
+                "username": "u1",
+                "directories": [
+                    {
+                        "directory": "Album A",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "Completed, Succeeded",
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "username": "u2",
+                "directories": [
+                    {
+                        "directory": "Album B",
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": "InProgress",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+
+        # time.time() calls: deadline calc, while-check,
+        # logger.info inside loop, while-check (exit),
+        # logger.warning in else clause.
+        times = [0, 0, 0, 100, 100]
+        with (
+            patch("rymparser.organizer.time.sleep"),
+            patch(
+                "rymparser.organizer.time.time",
+                side_effect=times,
+            ),
+        ):
+            moved, skipped = wait_and_organize(
+                mock_client,
+                results,
+                {"u1", "u2"},
+                dl,
+                timeout=10,
+                poll_interval=1,
+            )
+
+        assert moved == 1
+        assert skipped == 1
+        assert (dl / "Art1" / "Album A (2020)" / "01.flac").exists()
+
+    def test_skips_null_results(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Null results counted as skipped immediately."""
+        dl = tmp_path / "downloads"
+        dl.mkdir()
+
+        results: dict[str, Any] = {
+            "Artist - Album (2020)": None,
+        }
+
+        mock_client = MagicMock()
+
+        with (
+            patch("rymparser.organizer.time.sleep"),
+            patch(
+                "rymparser.organizer.time.time",
+                side_effect=[0, 100],
+            ),
+        ):
+            moved, skipped = wait_and_organize(
+                mock_client,
+                results,
+                set(),
+                dl,
+                timeout=10,
+                poll_interval=1,
+            )
+
+        assert moved == 0
+        assert skipped == 1
