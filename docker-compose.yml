@@ -1,0 +1,29 @@
+services:
+  slskd:
+    image: slskd/slskd:latest
+    container_name: rymparser-slskd
+    ports:
+      - "5030:5030"
+      - "50300:50300"
+    volumes:
+      - ./slskd-data:/app
+      - ./downloads:/app/downloads
+      - ./shared:/app/shared
+    environment:
+      SLSKD_REMOTE_CONFIGURATION: "true"
+      SLSKD_SLSK_USERNAME: ${SLSK_USERNAME}
+      SLSKD_SLSK_PASSWORD: ${SLSK_PASSWORD}
+      SLSKD_API_KEY: "role=ReadWrite;${SLSKD_API_KEY}"
+    restart: unless-stopped
+
+  rymparser:
+    build: .
+    depends_on:
+      - slskd
+    volumes:
+      - ./downloads:/downloads
+      - ./output:/output
+    environment:
+      SLSKD_HOST: "http://slskd:5030"
+      SLSKD_API_KEY: ${SLSKD_API_KEY}
+    working_dir: /output

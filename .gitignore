@@ -18,3 +18,12 @@ debug_screenshot*.png
 
 # Persistent browser profile
 browser_data/
+
+# Docker volumes
+slskd-data/
+downloads/
+shared/
+output/
+
+# Environment
+.env
