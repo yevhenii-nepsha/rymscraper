@@ -9,7 +9,11 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 from rymparser.models import Album
-from rymparser.slskd_client import _completed_directories
+from rymparser.slskd_client import (
+    SlskdError,
+    _completed_directories,
+    enqueue_download,
+)
 
 if TYPE_CHECKING:
     import slskd_api
@@ -240,6 +244,11 @@ def wait_and_organize(
     organized: set[str] = set()
     moved = 0
 
+    attempt_index: dict[str, int] = {}
+    for album_str, data in results.items():
+        if data and isinstance(data, dict):
+            attempt_index[album_str] = data.get("selected", 0)
+
     if total_expected == 0:
         return 0, null_count
 
@@ -266,12 +275,66 @@ def wait_and_organize(
             organized.add(dir_name)
 
         for dir_name in newly_failed:
-            if dir_name not in organized:
-                logger.warning(
-                    "Download failed (rejected/errored): %s",
-                    dir_name,
-                )
+            if dir_name in organized:
+                continue
+            if dir_name not in dir_map:
                 organized.add(dir_name)
+                continue
+
+            album_str, _remote_dir = dir_map[dir_name]
+            data = results.get(album_str)
+            if not data or not isinstance(data, dict):
+                organized.add(dir_name)
+                continue
+
+            alts = data.get("alternatives", [])
+            idx = attempt_index.get(album_str, 0) + 1
+
+            if idx < len(alts):
+                next_alt = alts[idx]
+                attempt_index[album_str] = idx
+                next_username = str(next_alt["username"])
+                next_files = next_alt["files"]
+
+                try:
+                    enqueue_download(
+                        client,
+                        next_username,
+                        next_files,
+                    )
+                except SlskdError as exc:
+                    logger.error(
+                        "Failed to enqueue retry for %s: %s",
+                        album_str,
+                        exc,
+                    )
+                    organized.add(dir_name)
+                    continue
+
+                # Update tracking for new download
+                new_dir = _normalize_path(str(next_alt.get("directory", "")))
+                dir_map[new_dir] = (
+                    album_str,
+                    str(next_alt.get("directory", "")),
+                )
+                usernames.add(next_username)
+                total_expected += 1
+
+                logger.info(
+                    "Retry %d/%d: %s from @%s",
+                    idx + 1,
+                    len(alts),
+                    album_str,
+                    next_username,
+                )
+            else:
+                logger.warning(
+                    "All %d alternatives exhausted for: %s",
+                    len(alts),
+                    album_str,
+                )
+
+            organized.add(dir_name)
 
         if len(organized) >= total_expected:
             break

@@ -503,3 +503,170 @@ class TestWaitAndOrganize:
 
         assert moved == 0
         assert skipped == 1
+
+    def test_retries_on_failed(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """On rejected download, retries with next alternative."""
+        dl = tmp_path / "downloads"
+        (dl / "Album A").mkdir(parents=True)
+        (dl / "Album A" / "01.flac").write_text("a")
+
+        results: dict[str, Any] = {
+            "Art1 - Album A (2020)": {
+                "selected": 0,
+                "alternatives": [
+                    {
+                        "username": "u1",
+                        "directory": ("Music\\Art1\\Album A"),
+                        "files": [
+                            {
+                                "filename": ("Music\\Art1\\Album A\\01.flac"),
+                            },
+                        ],
+                        "format": "flac",
+                        "bitrate": 0,
+                    },
+                    {
+                        "username": "u2",
+                        "directory": ("Music\\Art1v2\\Album A"),
+                        "files": [
+                            {
+                                "filename": ("Music\\Art1v2\\Album A\\01.flac"),
+                            },
+                        ],
+                        "format": "flac",
+                        "bitrate": 0,
+                    },
+                ],
+            },
+        }
+
+        mock_client = MagicMock()
+        mock_client.transfers.get_all_downloads.side_effect = [
+            # Poll 1: u1 rejected
+            [
+                {
+                    "username": "u1",
+                    "directories": [
+                        {
+                            "directory": ("Music\\Art1\\Album A"),
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": ("Completed, Rejected"),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            # Poll 2: u2 succeeded
+            [
+                {
+                    "username": "u1",
+                    "directories": [
+                        {
+                            "directory": ("Music\\Art1\\Album A"),
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": ("Completed, Rejected"),
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "username": "u2",
+                    "directories": [
+                        {
+                            "directory": ("Music\\Art1v2\\Album A"),
+                            "files": [
+                                {
+                                    "filename": "01.flac",
+                                    "state": ("Completed, Succeeded"),
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        ]
+
+        with patch("rymparser.organizer.time.sleep"):
+            moved, skipped = wait_and_organize(
+                mock_client,
+                results,
+                {"u1"},
+                dl,
+                timeout=60,
+                poll_interval=1,
+            )
+
+        mock_client.transfers.enqueue.assert_called_once()
+        assert moved == 1
+
+    def test_exhausts_alternatives(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """When all alternatives rejected, marks done."""
+        dl = tmp_path / "downloads"
+        dl.mkdir()
+
+        results: dict[str, Any] = {
+            "Art1 - Album A (2020)": {
+                "selected": 0,
+                "alternatives": [
+                    {
+                        "username": "u1",
+                        "directory": ("Music\\Art1\\Album A"),
+                        "files": [
+                            {"filename": "01.flac"},
+                        ],
+                        "format": "flac",
+                        "bitrate": 0,
+                    },
+                ],
+            },
+        }
+
+        mock_client = MagicMock()
+        mock_client.transfers.get_all_downloads.return_value = [
+            {
+                "username": "u1",
+                "directories": [
+                    {
+                        "directory": ("Music\\Art1\\Album A"),
+                        "files": [
+                            {
+                                "filename": "01.flac",
+                                "state": ("Completed, Rejected"),
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+
+        times = [0, 0, 0, 100, 100]
+        with (
+            patch("rymparser.organizer.time.sleep"),
+            patch(
+                "rymparser.organizer.time.time",
+                side_effect=times,
+            ),
+        ):
+            moved, skipped = wait_and_organize(
+                mock_client,
+                results,
+                {"u1"},
+                dl,
+                timeout=10,
+                poll_interval=1,
+            )
+
+        assert moved == 0
+        assert skipped == 1
