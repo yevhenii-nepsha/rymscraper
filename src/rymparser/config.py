@@ -34,6 +34,7 @@ class ScraperConfig:
 
     # CSS selectors
     content_selector: str = ".list_artist, .list_album"
+    artist_content_selector: str = ".section_artist_discography"
     artist_selector: str = ".list_artist"
     album_selector: str = ".list_album"
     year_selector: str = ".rel_date"
