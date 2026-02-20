@@ -393,12 +393,19 @@ def _cmd_search(
                 best.bitrate,
                 best.username,
             )
+            top = ranked[:3]
             all_results[str(album)] = {
-                "username": best.username,
-                "directory": best.directory,
-                "files": best.files,
-                "format": best.format,
-                "bitrate": best.bitrate,
+                "selected": 0,
+                "alternatives": [
+                    {
+                        "username": r.username,
+                        "directory": r.directory,
+                        "files": r.files,
+                        "format": r.format,
+                        "bitrate": r.bitrate,
+                    }
+                    for r in top
+                ],
             }
         else:
             # Interactive mode: show top 5
@@ -426,13 +433,24 @@ def _cmd_search(
                 continue
             idx = int(choice) - 1 if choice.isdigit() else 0
             idx = max(0, min(idx, len(ranked) - 1))
-            picked = ranked[idx]
+            if idx < 3:
+                alts = ranked[:3]
+                selected_idx = idx
+            else:
+                alts = [ranked[idx], *ranked[:2]]
+                selected_idx = 0
             all_results[str(album)] = {
-                "username": picked.username,
-                "directory": picked.directory,
-                "files": picked.files,
-                "format": picked.format,
-                "bitrate": picked.bitrate,
+                "selected": selected_idx,
+                "alternatives": [
+                    {
+                        "username": r.username,
+                        "directory": r.directory,
+                        "files": r.files,
+                        "format": r.format,
+                        "bitrate": r.bitrate,
+                    }
+                    for r in alts
+                ],
             }
 
     output_path = (
@@ -490,8 +508,20 @@ def _cmd_download(
             skipped += 1
             continue
         assert isinstance(data, dict)
-        username = str(data["username"])
-        files = data["files"]
+        # Support both new and legacy format
+        if "alternatives" in data:
+            idx = data.get("selected", 0)
+            assert isinstance(idx, int)
+            alt = data["alternatives"]
+            assert isinstance(alt, list)
+            entry = alt[idx]
+            assert isinstance(entry, dict)
+            username = str(entry["username"])
+            files = entry["files"]
+        else:
+            # Legacy format
+            username = str(data["username"])
+            files = data["files"]
         assert isinstance(files, list)
 
         try:
