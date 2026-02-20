@@ -19,7 +19,12 @@ debug_screenshot*.png
 # Persistent browser profile
 browser_data/
 
-# slskd runtime data
+# Runtime data
 slskd-data/
 downloads/
 *.json
+
+# Secrets
+.env
+.env.*
+!.env.example
