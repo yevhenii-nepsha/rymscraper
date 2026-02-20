@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from rymparser.cli import build_parser, validate_url
+import pytest
+
+from rymparser.artist_parser import DEFAULT_TYPES
+from rymparser.cli import (
+    _parse_types,
+    build_parser,
+    is_artist_url,
+    validate_url,
+)
+from rymparser.models import ReleaseType
 
 
 class TestValidateUrl:
@@ -107,3 +116,74 @@ class TestBuildParser:
             ]
         )
         assert args.config == "/tmp/cfg.toml"
+
+
+class TestIsArtistUrl:
+    def test_artist_url(self) -> None:
+        url = "https://rateyourmusic.com/artist/neurosis"
+        assert is_artist_url(url) is True
+
+    def test_list_url(self) -> None:
+        url = "https://rateyourmusic.com/list/user/my-list"
+        assert is_artist_url(url) is False
+
+    def test_artist_url_trailing_slash(self) -> None:
+        url = "https://rateyourmusic.com/artist/neurosis/"
+        assert is_artist_url(url) is True
+
+
+class TestParseTypes:
+    def test_valid_types(self) -> None:
+        result = _parse_types("album,ep")
+        assert result == frozenset(
+            {
+                ReleaseType.ALBUM,
+                ReleaseType.EP,
+            }
+        )
+
+    def test_none_returns_default(self) -> None:
+        assert _parse_types(None) == DEFAULT_TYPES
+
+    def test_single_type(self) -> None:
+        result = _parse_types("album")
+        assert result == frozenset({ReleaseType.ALBUM})
+
+    def test_invalid_type_raises(self) -> None:
+        with pytest.raises(ValueError):
+            _parse_types("album,foo")
+
+    def test_strips_whitespace(self) -> None:
+        result = _parse_types("album , ep")
+        assert result == frozenset(
+            {
+                ReleaseType.ALBUM,
+                ReleaseType.EP,
+            }
+        )
+
+
+class TestBuildParserArtist:
+    def test_parse_with_types_flag(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "parse",
+                "--types",
+                "album,ep,live_album",
+                "https://rateyourmusic.com/artist/neurosis",
+            ]
+        )
+        assert args.types == "album,ep,live_album"
+
+    def test_go_with_types_flag(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "go",
+                "--types",
+                "album",
+                "https://rateyourmusic.com/artist/neurosis",
+            ]
+        )
+        assert args.types == "album"

@@ -9,9 +9,10 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+from rymparser.artist_parser import DEFAULT_TYPES
 from rymparser.browser import FetchError, fetch_all_pages
 from rymparser.config import ScraperConfig
-from rymparser.models import Album
+from rymparser.models import Album, ReleaseType
 from rymparser.parser import extract_slug
 from rymparser.settings import AppSettings, load_settings
 
@@ -31,6 +32,38 @@ def validate_url(url: str) -> bool:
         return False
     parsed = urlparse(url)
     return "rateyourmusic.com" in parsed.netloc
+
+
+def is_artist_url(url: str) -> bool:
+    """Check if URL is an RYM artist page.
+
+    Args:
+        url: The URL string to check.
+
+    Returns:
+        True if the URL path contains /artist/.
+    """
+    return "/artist/" in urlparse(url).path
+
+
+def _parse_types(
+    raw: str | None,
+) -> frozenset[ReleaseType]:
+    """Parse comma-separated release types string.
+
+    Args:
+        raw: Comma-separated type names, or None
+            for defaults.
+
+    Returns:
+        Frozenset of ReleaseType values.
+
+    Raises:
+        ValueError: If any type name is invalid.
+    """
+    if raw is None:
+        return DEFAULT_TYPES
+    return frozenset(ReleaseType(t.strip()) for t in raw.split(","))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -70,6 +103,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--headless",
         action="store_true",
         help="Run browser headless",
+    )
+    p_parse.add_argument(
+        "--types",
+        help=(
+            "Release types for artist pages "
+            "(comma-separated). Options: album, ep, "
+            "live_album, single, compilation. "
+            "Default: album,ep"
+        ),
     )
 
     # search
@@ -136,6 +178,15 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Auto-select best result per album",
     )
+    p_go.add_argument(
+        "--types",
+        help=(
+            "Release types for artist pages "
+            "(comma-separated). Options: album, ep, "
+            "live_album, single, compilation. "
+            "Default: album,ep"
+        ),
+    )
 
     return parser
 
@@ -163,28 +214,48 @@ def _cmd_parse(
     config = ScraperConfig(
         headless=getattr(args, "headless", False),
     )
-    try:
-        albums = fetch_all_pages(
-            args.url,
-            config=config,
+
+    if is_artist_url(args.url):
+        from rymparser.artist_parser import (
+            extract_artist_slug,
         )
-    except FetchError as exc:
-        logger.error("Failed to fetch: %s", exc)
-        sys.exit(1)
+        from rymparser.browser import fetch_artist_page
+
+        types = _parse_types(getattr(args, "types", None))
+        try:
+            albums = fetch_artist_page(
+                args.url,
+                types=types,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error("Failed to fetch: %s", exc)
+            sys.exit(1)
+
+        output_file = (
+            Path(args.output)
+            if getattr(args, "output", None)
+            else Path(f"{extract_artist_slug(args.url)}.txt")
+        )
+    else:
+        try:
+            albums = fetch_all_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error("Failed to fetch: %s", exc)
+            sys.exit(1)
+
+        output_file = (
+            Path(args.output)
+            if getattr(args, "output", None)
+            else Path(f"{extract_slug(args.url)}.txt")
+        )
 
     if not albums:
         logger.error("No albums found.")
         sys.exit(1)
-
-    output_file = (
-        Path(args.output)
-        if getattr(
-            args,
-            "output",
-            None,
-        )
-        else Path(f"{extract_slug(args.url)}.txt")
-    )
     try:
         output_file.write_text("\n".join(str(a) for a in albums) + "\n")
     except OSError as exc:
@@ -507,7 +578,14 @@ def main(argv: list[str] | None = None) -> None:
         # Pipeline: parse -> search -> download
         _cmd_parse(args, settings)
         # Create temp album file for search
-        tmp_file = Path(f"{extract_slug(args.url)}.txt")
+        if is_artist_url(args.url):
+            from rymparser.artist_parser import (
+                extract_artist_slug,
+            )
+
+            tmp_file = Path(f"{extract_artist_slug(args.url)}.txt")
+        else:
+            tmp_file = Path(f"{extract_slug(args.url)}.txt")
         # Simulate search args
         search_ns = argparse.Namespace(
             file=str(tmp_file),
