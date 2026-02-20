@@ -11,7 +11,13 @@ from playwright.sync_api import Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright_stealth import Stealth
 
+from rymparser.artist_parser import (
+    DEFAULT_TYPES,
+    SECTION_CODE_TO_TYPE,
+    parse_artist_page,
+)
 from rymparser.config import ScraperConfig
+from rymparser.models import ReleaseType  # noqa: TC001 (runtime use)
 from rymparser.parser import find_next_page_url, parse_page
 
 if TYPE_CHECKING:
@@ -266,3 +272,102 @@ def fetch_all_pages(
             context.close()
 
     return all_albums
+
+
+def _expand_sections(
+    page: Page,
+    types: frozenset[ReleaseType],
+) -> None:
+    """Click 'Show all' buttons for requested disco sections.
+
+    Args:
+        page: The Playwright page object.
+        types: Release types whose sections should be expanded.
+    """
+    code_map = {v: k for k, v in SECTION_CODE_TO_TYPE.items()}
+    for release_type in types:
+        code = code_map.get(release_type)
+        if not code:
+            continue
+        btn_selector = f"#disco_type_{code} span.disco_expand_section_link"
+        btn = page.query_selector(btn_selector)
+        if btn:
+            logger.info(
+                "Expanding section: %s",
+                release_type.value,
+            )
+            btn.click()
+            page.wait_for_timeout(2000)
+
+
+def fetch_artist_page(
+    url: str,
+    types: frozenset[ReleaseType] = DEFAULT_TYPES,
+    config: ScraperConfig | None = None,
+) -> list[Album]:
+    """Fetch and parse an RYM artist page.
+
+    Opens URL with Playwright, handles Cloudflare, clicks
+    'Show all' for requested sections, then parses the
+    full HTML.
+
+    Args:
+        url: RYM artist page URL.
+        types: Release types to expand and parse.
+        config: Scraper config. Uses defaults if None.
+
+    Returns:
+        List of Album objects with release_type set.
+
+    Raises:
+        FetchError: If content cannot be loaded.
+    """
+    if config is None:
+        config = ScraperConfig()
+
+    stealth = Stealth()
+    with stealth.use_sync(sync_playwright()) as pw:
+        logger.info(
+            "Launching browser (headless=%s)",
+            config.headless,
+        )
+        context = pw.chromium.launch_persistent_context(
+            user_data_dir=str(config.browser_data_dir),
+            headless=config.headless,
+            viewport={
+                "width": config.viewport_width,
+                "height": config.viewport_height,
+            },
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        try:
+            page = context.new_page()
+            logger.info("Fetching artist page: %s", url)
+            try:
+                page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                )
+            except PlaywrightTimeout as exc:
+                raise FetchError(
+                    f"Navigation to {url} timed out: {exc}"
+                ) from exc
+
+            if not _wait_for_content(
+                page,
+                config,
+                selector=config.artist_content_selector,
+            ):
+                _save_debug_html(page, Path.cwd())
+                raise FetchError(
+                    "Timed out waiting for artist "
+                    "discography content. May be "
+                    "blocked by Cloudflare."
+                )
+
+            _expand_sections(page, types)
+            html = page.content()
+        finally:
+            context.close()
+
+    return parse_artist_page(html, types)
