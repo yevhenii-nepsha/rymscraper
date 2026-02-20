@@ -1,5 +1,8 @@
 """Tests for artist page parser."""
 
+import os
+from pathlib import Path
+
 import pytest
 
 from rymparser.artist_parser import (
@@ -7,6 +10,8 @@ from rymparser.artist_parser import (
     parse_artist_page,
 )
 from rymparser.models import ReleaseType
+
+_NEUROSIS_HTML = "/tmp/rym_artist_neurosis.html"
 
 ARTIST_HTML = """\
 <html>
@@ -141,3 +146,30 @@ def test_extract_artist_slug() -> None:
 def test_extract_artist_slug_trailing_slash() -> None:
     url = "https://rateyourmusic.com/artist/neurosis/"
     assert extract_artist_slug(url) == "neurosis"
+
+
+@pytest.mark.skipif(
+    not os.path.exists(_NEUROSIS_HTML),
+    reason="Real HTML file not available",
+)
+def test_parse_real_neurosis_page() -> None:
+    """Smoke test with real Neurosis artist page HTML."""
+    html = Path(_NEUROSIS_HTML).read_text()
+    albums = parse_artist_page(html)
+
+    # Should find albums and EPs
+    assert len(albums) > 0
+
+    # All should be Neurosis
+    assert all(a.artist == "Neurosis" for a in albums)
+
+    # All should have release_type set
+    assert all(a.release_type is not None for a in albums)
+
+    # Check type distribution
+    album_count = sum(1 for a in albums if a.release_type == ReleaseType.ALBUM)
+    ep_count = sum(1 for a in albums if a.release_type == ReleaseType.EP)
+
+    # Neurosis has ~11 albums and ~5 EPs
+    assert album_count >= 5
+    assert ep_count >= 3
