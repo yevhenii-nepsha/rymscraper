@@ -127,8 +127,12 @@ class TestCompletedDirectories:
                 ],
             },
         ]
-        result = _completed_directories(transfers, {"user1"})
-        assert result == {"Album A"}
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert succeeded == {"Album A"}
+        assert len(failed) == 0
 
     def test_ignores_other_users(self) -> None:
         transfers = [
@@ -147,8 +151,12 @@ class TestCompletedDirectories:
                 ],
             },
         ]
-        result = _completed_directories(transfers, {"user1"})
-        assert result == set()
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert succeeded == set()
+        assert failed == set()
 
     def test_empty_dir_is_not_complete(self) -> None:
         transfers = [
@@ -162,8 +170,12 @@ class TestCompletedDirectories:
                 ],
             },
         ]
-        result = _completed_directories(transfers, {"user1"})
-        assert result == set()
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert succeeded == set()
+        assert failed == set()
 
     def test_normalizes_backslashes(self) -> None:
         transfers = [
@@ -182,11 +194,12 @@ class TestCompletedDirectories:
                 ],
             },
         ]
-        result = _completed_directories(
+        succeeded, failed = _completed_directories(
             transfers,
             {"user1"},
         )
-        assert result == {"Music/Artist/Album"}
+        assert succeeded == {"Music/Artist/Album"}
+        assert len(failed) == 0
 
     def test_errored_counts_as_complete(self) -> None:
         transfers = [
@@ -205,5 +218,130 @@ class TestCompletedDirectories:
                 ],
             },
         ]
-        result = _completed_directories(transfers, {"user1"})
-        assert result == {"Album D"}
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert len(succeeded) == 0
+        assert failed == {"Album D"}
+
+    def test_completed_directories_returns_succeeded(
+        self,
+    ) -> None:
+        """All-Succeeded dir goes into succeeded set."""
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "music\\Artist\\Album",
+                        "files": [
+                            {
+                                "state": "Completed, Succeeded",
+                            },
+                            {
+                                "state": "Completed, Succeeded",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert "music/Artist/Album" in succeeded
+        assert len(failed) == 0
+
+    def test_completed_directories_returns_failed(
+        self,
+    ) -> None:
+        """All-Rejected dir goes into failed set."""
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "music\\Artist\\Album",
+                        "files": [
+                            {
+                                "state": "Completed, Rejected",
+                            },
+                            {
+                                "state": "Completed, Rejected",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert len(succeeded) == 0
+        assert "music/Artist/Album" in failed
+
+    def test_completed_directories_mixed_dirs(
+        self,
+    ) -> None:
+        """One succeeded dir, one rejected dir."""
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "music\\Artist\\Album1",
+                        "files": [
+                            {
+                                "state": "Completed, Succeeded",
+                            },
+                        ],
+                    },
+                    {
+                        "directory": "music\\Artist\\Album2",
+                        "files": [
+                            {
+                                "state": "Completed, Rejected",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert "music/Artist/Album1" in succeeded
+        assert "music/Artist/Album2" in failed
+
+    def test_completed_directories_partial_reject(
+        self,
+    ) -> None:
+        """Dir with mix of Succeeded and Rejected → failed."""
+        transfers = [
+            {
+                "username": "user1",
+                "directories": [
+                    {
+                        "directory": "music\\Artist\\Album",
+                        "files": [
+                            {
+                                "state": "Completed, Succeeded",
+                            },
+                            {
+                                "state": "Completed, Rejected",
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+        succeeded, failed = _completed_directories(
+            transfers,
+            {"user1"},
+        )
+        assert len(succeeded) == 0
+        assert "music/Artist/Album" in failed

@@ -189,6 +189,13 @@ _COMPLETED_STATES = frozenset(
         "Completed, Cancelled",
         "Completed, TimedOut",
         "Completed, Errored",
+        "Completed, Rejected",
+    }
+)
+
+_SUCCESS_STATES = frozenset(
+    {
+        "Completed, Succeeded",
     }
 )
 
@@ -196,7 +203,7 @@ _COMPLETED_STATES = frozenset(
 def _completed_directories(
     transfers: list[dict[str, Any]],
     usernames: set[str],
-) -> set[str]:
+) -> tuple[set[str], set[str]]:
     """Find directories where all files are done.
 
     Directory paths are normalized (backslashes to forward
@@ -207,9 +214,13 @@ def _completed_directories(
         usernames: Set of usernames to check.
 
     Returns:
-        Set of normalized directory paths that are complete.
+        Tuple of (succeeded, failed) normalized dir paths.
+        succeeded: all files Completed, Succeeded.
+        failed: all files completed but at least one is
+            not Succeeded (Rejected, Errored, etc.).
     """
-    completed: set[str] = set()
+    succeeded: set[str] = set()
+    failed: set[str] = set()
     for t in transfers:
         if t.get("username") not in usernames:
             continue
@@ -217,12 +228,15 @@ def _completed_directories(
             files = d.get("files", [])
             if not files:
                 continue
-            all_done = all(
-                str(f.get("state", "")) in _COMPLETED_STATES for f in files
-            )
-            if all_done:
-                raw_dir = str(d.get("directory", ""))
-                completed.add(
-                    raw_dir.replace("\\", "/"),
-                )
-    return completed
+            states = [str(f.get("state", "")) for f in files]
+            all_done = all(s in _COMPLETED_STATES for s in states)
+            if not all_done:
+                continue
+            raw_dir = str(d.get("directory", ""))
+            normalized = raw_dir.replace("\\", "/")
+            all_succeeded = all(s in _SUCCESS_STATES for s in states)
+            if all_succeeded:
+                succeeded.add(normalized)
+            else:
+                failed.add(normalized)
+    return succeeded, failed
