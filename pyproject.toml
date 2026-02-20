@@ -1,7 +1,7 @@
 [project]
 name = "rymparser"
 version = "0.1.0"
-description = "Parse RYM list pages into Artist - Album (Year) format for Soulseek search"
+description = "Parse RYM list and artist pages into Artist - Album (Year) text format"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -9,7 +9,6 @@ dependencies = [
     "playwright-stealth",
     "beautifulsoup4",
     "lxml",
-    "slskd-api",
 ]
 
 [dependency-groups]
@@ -53,6 +52,5 @@ module = [
     "playwright_stealth.*",
     "bs4.*",
     "lxml.*",
-    "slskd_api.*",
 ]
 ignore_missing_imports = true

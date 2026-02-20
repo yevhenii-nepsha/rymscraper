@@ -8,8 +8,17 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from rymparser.browser import FetchError, fetch_all_pages
+from rymparser.artist_parser import (
+    DEFAULT_TYPES,
+    extract_artist_slug,
+)
+from rymparser.browser import (
+    FetchError,
+    fetch_all_pages,
+    fetch_artist_page,
+)
 from rymparser.config import ScraperConfig
+from rymparser.models import ReleaseType
 from rymparser.parser import extract_slug
 
 logger = logging.getLogger(__name__)
@@ -30,6 +39,46 @@ def validate_url(url: str) -> bool:
     return "rateyourmusic.com" in parsed.netloc
 
 
+def is_artist_url(url: str) -> bool:
+    """Check if URL points to an artist page.
+
+    Args:
+        url: A RateYourMusic URL.
+
+    Returns:
+        True if the URL path starts with /artist/.
+    """
+    path = urlparse(url).path
+    return path.startswith("/artist/")
+
+
+def _parse_types(
+    raw: str | None,
+) -> frozenset[ReleaseType]:
+    """Parse comma-separated release types string.
+
+    Args:
+        raw: Comma-separated release type values,
+            or None for defaults.
+
+    Returns:
+        Frozenset of ReleaseType values.
+
+    Raises:
+        ValueError: If any type string is invalid.
+    """
+    if raw is None:
+        return DEFAULT_TYPES
+    values = {v.strip() for v in raw.split(",")}
+    valid = {t.value for t in ReleaseType}
+    invalid = values - valid
+    if invalid:
+        raise ValueError(
+            f"Invalid release types: {invalid}. Valid: {sorted(valid)}"
+        )
+    return frozenset(ReleaseType(v) for v in values)
+
+
 def parse_args(
     argv: list[str] | None = None,
 ) -> argparse.Namespace:
@@ -43,12 +92,12 @@ def parse_args(
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Parse RYM list pages into 'Artist - Album (Year)' format."
+            "Parse RYM list/artist pages into 'Artist - Album (Year)' format."
         ),
     )
     parser.add_argument(
         "url",
-        help="RYM list URL to parse",
+        help="RYM list or artist URL to parse",
     )
     parser.add_argument(
         "-o",
@@ -59,6 +108,15 @@ def parse_args(
         "--headless",
         action="store_true",
         help="Run browser in headless mode",
+    )
+    parser.add_argument(
+        "--types",
+        default=None,
+        help=(
+            "Comma-separated release types for artist "
+            "pages (default: album,ep). Options: "
+            + ", ".join(t.value for t in ReleaseType)
+        ),
     )
     parser.add_argument(
         "-v",
@@ -89,31 +147,55 @@ def main(argv: list[str] | None = None) -> None:
         )
         sys.exit(1)
 
-    output_file = (
-        Path(args.output)
-        if args.output
-        else Path(f"{extract_slug(args.url)}.txt")
-    )
+    try:
+        types = _parse_types(args.types)
+    except ValueError as exc:
+        logger.error("Invalid --types: %s", exc)
+        sys.exit(1)
+
     config = ScraperConfig(headless=args.headless)
 
-    try:
-        albums = fetch_all_pages(
-            args.url,
-            config=config,
+    if is_artist_url(args.url):
+        slug = extract_artist_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
+        try:
+            albums = fetch_artist_page(
+                args.url,
+                types=types,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch artist page: %s",
+                exc,
+            )
+            sys.exit(1)
+    else:
+        output_file = (
+            Path(args.output)
+            if args.output
+            else Path(f"{extract_slug(args.url)}.txt")
         )
-    except FetchError as exc:
-        logger.error(
-            "Failed to fetch albums: %s",
-            exc,
-        )
-        sys.exit(1)
+        try:
+            albums = fetch_all_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch albums: %s",
+                exc,
+            )
+            sys.exit(1)
 
     if not albums:
         logger.error("No albums found. Check debug_page.html if created.")
         sys.exit(1)
 
     try:
-        output_file.write_text("\n".join(str(a) for a in albums) + "\n")
+        output_file.write_text(
+            "\n".join(str(a) for a in albums) + "\n",
+        )
     except OSError as exc:
         logger.error(
             "Failed to write %s: %s",
@@ -123,7 +205,7 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     logger.info(
-        "Done! %d albums written to %s",
+        "%d albums written to %s",
         len(albums),
         output_file,
     )

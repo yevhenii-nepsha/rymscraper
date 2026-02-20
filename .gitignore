@@ -18,3 +18,8 @@ debug_screenshot*.png
 
 # Persistent browser profile
 browser_data/
+
+# slskd runtime data
+slskd-data/
+downloads/
+*.json
