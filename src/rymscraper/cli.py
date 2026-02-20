@@ -1,4 +1,4 @@
-"""CLI entry point for rymparser."""
+"""CLI entry point for rymscraper."""
 
 from __future__ import annotations
 
@@ -8,18 +8,18 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from rymparser.artist_parser import (
+from rymscraper.artist_parser import (
     DEFAULT_TYPES,
     extract_artist_slug,
 )
-from rymparser.browser import (
+from rymscraper.browser import (
     FetchError,
     fetch_all_pages,
     fetch_artist_page,
 )
-from rymparser.config import ScraperConfig
-from rymparser.models import ReleaseType
-from rymparser.parser import extract_slug
+from rymscraper.config import ScraperConfig
+from rymscraper.models import ReleaseType
+from rymscraper.parser import extract_slug
 
 logger = logging.getLogger(__name__)
 

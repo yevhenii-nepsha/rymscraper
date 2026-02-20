@@ -1,4 +1,4 @@
-"""Configuration for rymparser."""
+"""Configuration for rymscraper."""
 
 from __future__ import annotations
 

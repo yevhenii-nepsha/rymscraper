@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from rymparser.artist_parser import (
+from rymscraper.artist_parser import (
     extract_artist_slug,
     parse_artist_page,
 )
-from rymparser.models import ReleaseType
+from rymscraper.models import ReleaseType
 
 _NEUROSIS_HTML = "/tmp/rym_artist_neurosis.html"
 

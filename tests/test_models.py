@@ -2,7 +2,7 @@
 
 import pytest
 
-from rymparser.models import Album, ReleaseType
+from rymscraper.models import Album, ReleaseType
 
 
 class TestAlbum:

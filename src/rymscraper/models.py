@@ -1,4 +1,4 @@
-"""Domain models for rymparser."""
+"""Domain models for rymscraper."""
 
 from __future__ import annotations
 

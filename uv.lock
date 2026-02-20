@@ -354,7 +354,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rymparser"
+name = "rymscraper"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

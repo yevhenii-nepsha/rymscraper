@@ -1,4 +1,4 @@
-# rymparser
+# rymscraper
 
 Parse [RateYourMusic](https://rateyourmusic.com) list pages into
 `Artist - Album (Year)` format for
@@ -21,16 +21,16 @@ uv run playwright install chromium
 
 ```bash
 # Basic — opens browser window, saves to <slug>.txt
-uv run rymparser https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper https://rateyourmusic.com/list/user/best-albums/
 
 # Custom output file
-uv run rymparser -o albums.txt https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper -o albums.txt https://rateyourmusic.com/list/user/best-albums/
 
 # Headless mode (may be blocked by Cloudflare)
-uv run rymparser --headless https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper --headless https://rateyourmusic.com/list/user/best-albums/
 
 # Verbose logging
-uv run rymparser -v https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper -v https://rateyourmusic.com/list/user/best-albums/
 ```
 
 ## Output format

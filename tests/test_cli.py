@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from rymparser.artist_parser import DEFAULT_TYPES
-from rymparser.cli import (
+from rymscraper.artist_parser import DEFAULT_TYPES
+from rymscraper.cli import (
     _parse_types,
     is_artist_url,
     parse_args,
     validate_url,
 )
-from rymparser.models import ReleaseType
+from rymscraper.models import ReleaseType
 
 
 class TestValidateUrl:
