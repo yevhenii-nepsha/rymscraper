@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
-from rymparser.models import Album  # noqa: TC001 (runtime usage)
+from rymscraper.models import Album  # noqa: TC001 (runtime usage)
 
 if TYPE_CHECKING:
-    from rymparser.settings import AppSettings
+    from rymscraper.settings import AppSettings
 
 logger = logging.getLogger(__name__)
 

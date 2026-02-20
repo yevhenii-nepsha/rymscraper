@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rymparser.settings import AppSettings, load_settings
+from rymscraper.settings import AppSettings, load_settings
 
 
 @pytest.fixture

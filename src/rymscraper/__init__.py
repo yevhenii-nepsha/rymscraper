@@ -1,31 +1,31 @@
 """Parse RYM list pages for Soulseek search."""
 
-from rymparser.artist_parser import (
+from rymscraper.artist_parser import (
     DEFAULT_TYPES,
     extract_artist_slug,
     parse_artist_page,
 )
-from rymparser.browser import (
+from rymscraper.browser import (
     FetchError,
     fetch_all_pages,
     fetch_artist_page,
 )
-from rymparser.config import ScraperConfig
-from rymparser.models import Album, ReleaseType
-from rymparser.organizer import wait_and_organize
-from rymparser.parser import (
+from rymscraper.config import ScraperConfig
+from rymscraper.models import Album, ReleaseType
+from rymscraper.organizer import wait_and_organize
+from rymscraper.parser import (
     extract_slug,
     find_next_page_url,
     parse_page,
 )
-from rymparser.search import (
+from rymscraper.search import (
     AlbumSearchResult,
     build_query,
     filter_responses,
     rank_results,
 )
-from rymparser.settings import AppSettings, load_settings
-from rymparser.slskd_client import SlskdError
+from rymscraper.settings import AppSettings, load_settings
+from rymscraper.slskd_client import SlskdError
 
 __all__ = [
     "DEFAULT_TYPES",

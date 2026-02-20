@@ -11,17 +11,17 @@ from playwright.sync_api import Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright_stealth import Stealth
 
-from rymparser.artist_parser import (
+from rymscraper.artist_parser import (
     DEFAULT_TYPES,
     SECTION_CODE_TO_TYPE,
     parse_artist_page,
 )
-from rymparser.config import ScraperConfig
-from rymparser.models import ReleaseType  # noqa: TC001 (runtime use)
-from rymparser.parser import find_next_page_url, parse_page
+from rymscraper.config import ScraperConfig
+from rymscraper.models import ReleaseType  # noqa: TC001 (runtime use)
+from rymscraper.parser import find_next_page_url, parse_page
 
 if TYPE_CHECKING:
-    from rymparser.models import Album
+    from rymscraper.models import Album
 
 logger = logging.getLogger(__name__)
 

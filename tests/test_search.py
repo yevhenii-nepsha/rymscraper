@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from rymparser.models import Album
-from rymparser.search import (
+from rymscraper.models import Album
+from rymscraper.search import (
     AlbumSearchResult,
     _file_ext,
     build_query,
     filter_responses,
     rank_results,
 )
-from rymparser.settings import AppSettings
+from rymscraper.settings import AppSettings
 
 
 def _make_response(

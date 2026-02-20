@@ -8,8 +8,8 @@ import time
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
-from rymparser.models import Album
-from rymparser.slskd_client import (
+from rymscraper.models import Album
+from rymscraper.slskd_client import (
     SlskdError,
     _completed_directories,
     enqueue_download,

@@ -25,4 +25,4 @@ RUN uv run playwright install chromium
 COPY src/ src/
 COPY README.md ./
 
-ENTRYPOINT ["uv", "run", "rymparser"]
+ENTRYPOINT ["uv", "run", "rymscraper"]

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from rymparser.models import Album
-from rymparser.parser import (
+from rymscraper.models import Album
+from rymscraper.parser import (
     extract_slug,
     find_next_page_url,
     parse_page,

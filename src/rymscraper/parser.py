@@ -7,8 +7,8 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from rymparser.config import ScraperConfig
-from rymparser.models import Album
+from rymscraper.config import ScraperConfig
+from rymscraper.models import Album
 
 _DEFAULT_CONFIG = ScraperConfig()
 

@@ -1,4 +1,4 @@
-# rymparser
+# rymscraper
 
 Parse [RateYourMusic](https://rateyourmusic.com) list pages into
 `Artist - Album (Year)` format, then search and download from
@@ -22,16 +22,16 @@ uv run playwright install chromium
 
 ```bash
 # 1. Parse a RYM list
-uv run rymparser parse https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper parse https://rateyourmusic.com/list/user/best-albums/
 
 # 2. Search Soulseek (auto-select best result per album)
-uv run rymparser search --auto best-albums.txt
+uv run rymscraper search --auto best-albums.txt
 
 # 3. Download and organize into Artist/Album (Year)/
-uv run rymparser download best-albums.json
+uv run rymscraper download best-albums.json
 
 # Or do it all at once
-uv run rymparser go --auto https://rateyourmusic.com/list/user/best-albums/
+uv run rymscraper go --auto https://rateyourmusic.com/list/user/best-albums/
 ```
 
 ## Subcommands
@@ -39,9 +39,9 @@ uv run rymparser go --auto https://rateyourmusic.com/list/user/best-albums/
 ### `parse` -- scrape RYM list
 
 ```bash
-uv run rymparser parse https://rateyourmusic.com/list/user/test/
-uv run rymparser parse -o albums.txt https://rateyourmusic.com/list/user/test/
-uv run rymparser parse --headless https://rateyourmusic.com/list/user/test/
+uv run rymscraper parse https://rateyourmusic.com/list/user/test/
+uv run rymscraper parse -o albums.txt https://rateyourmusic.com/list/user/test/
+uv run rymscraper parse --headless https://rateyourmusic.com/list/user/test/
 ```
 
 | Flag | Description |
@@ -60,10 +60,10 @@ Boards of Canada - Music Has the Right to Children (1998)
 ### `search` -- find albums on Soulseek
 
 ```bash
-uv run rymparser search albums.txt              # interactive mode
-uv run rymparser search --auto albums.txt       # auto-select best
-uv run rymparser search --auto --format flac --min-bitrate 256 albums.txt
-uv run rymparser search --auto --min-files 3 albums.txt
+uv run rymscraper search albums.txt              # interactive mode
+uv run rymscraper search --auto albums.txt       # auto-select best
+uv run rymscraper search --auto --format flac --min-bitrate 256 albums.txt
+uv run rymscraper search --auto --min-files 3 albums.txt
 ```
 
 | Flag | Description |
@@ -80,8 +80,8 @@ bitrate, file count, upload speed, and queue status.
 ### `download` -- download and organize
 
 ```bash
-uv run rymparser download results.json
-uv run rymparser download --downloads-dir /path/to/downloads results.json
+uv run rymscraper download results.json
+uv run rymscraper download --downloads-dir /path/to/downloads results.json
 ```
 
 | Flag | Description |
@@ -107,9 +107,9 @@ downloads/
 ### `go` -- all-in-one pipeline
 
 ```bash
-uv run rymparser go https://rateyourmusic.com/list/user/test/
-uv run rymparser go --auto https://rateyourmusic.com/list/user/test/
-uv run rymparser go --auto --headless https://rateyourmusic.com/list/user/test/
+uv run rymscraper go https://rateyourmusic.com/list/user/test/
+uv run rymscraper go --auto https://rateyourmusic.com/list/user/test/
+uv run rymscraper go --auto --headless https://rateyourmusic.com/list/user/test/
 ```
 
 Runs parse, search, and download in sequence.
@@ -143,24 +143,24 @@ Runs parse, search, and download in sequence.
    docker compose up -d slskd
    ```
 
-3. Run rymparser:
+3. Run rymscraper:
 
    ```bash
    # Full pipeline
-   docker compose run rymparser go --auto \
+   docker compose run rymscraper go --auto \
      https://rateyourmusic.com/list/user/best-albums/
 
    # Or step by step
-   docker compose run rymparser parse https://rateyourmusic.com/list/user/test/
-   docker compose run rymparser search --auto test.txt
-   docker compose run rymparser download test.json
+   docker compose run rymscraper parse https://rateyourmusic.com/list/user/test/
+   docker compose run rymscraper search --auto test.txt
+   docker compose run rymscraper download test.json
    ```
 
 Downloads appear in `./downloads/` on the host.
 
 ## Configuration
 
-Create `~/.config/rymparser/config.toml`:
+Create `~/.config/rymscraper/config.toml`:
 
 ```toml
 [slskd]

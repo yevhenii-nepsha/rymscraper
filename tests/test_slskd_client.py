@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rymparser.settings import AppSettings
-from rymparser.slskd_client import (
+from rymscraper.settings import AppSettings
+from rymscraper.slskd_client import (
     SlskdError,
     _completed_directories,
     create_client,
@@ -32,7 +32,7 @@ class TestCreateClient:
         with pytest.raises(SlskdError, match="API key"):
             create_client(s)
 
-    @patch("rymparser.slskd_client.slskd_api")
+    @patch("rymscraper.slskd_client.slskd_api")
     def test_creates_client(
         self,
         mock_api: MagicMock,
@@ -47,7 +47,7 @@ class TestCreateClient:
 
 
 class TestSearchAlbums:
-    @patch("rymparser.slskd_client.slskd_api")
+    @patch("rymscraper.slskd_client.slskd_api")
     def test_returns_responses(
         self,
         mock_api: MagicMock,

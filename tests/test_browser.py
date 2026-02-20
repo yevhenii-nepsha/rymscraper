@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from rymparser.browser import _wait_for_content, is_cloudflare_challenge
-from rymparser.config import ScraperConfig
-from rymparser.models import ReleaseType
+from rymscraper.browser import _wait_for_content, is_cloudflare_challenge
+from rymscraper.config import ScraperConfig
+from rymscraper.models import ReleaseType
 
 
 class TestIsCloudflareChallenge:
@@ -56,7 +56,7 @@ def test_expand_sections_clicks_show_all(
     mock_page: MagicMock,
 ) -> None:
     """Clicks 'Show all' button when present."""
-    from rymparser.browser import _expand_sections
+    from rymscraper.browser import _expand_sections
 
     mock_btn = MagicMock()
     mock_page.query_selector.return_value = mock_btn
@@ -76,7 +76,7 @@ def test_expand_sections_skips_when_no_button(
     mock_page: MagicMock,
 ) -> None:
     """Skips section when no 'Show all' button found."""
-    from rymparser.browser import _expand_sections
+    from rymscraper.browser import _expand_sections
 
     mock_page.query_selector.return_value = None
 

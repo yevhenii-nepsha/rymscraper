@@ -1,4 +1,4 @@
-"""Thin wrapper around slskd-api for rymparser."""
+"""Thin wrapper around slskd-api for rymscraper."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 import slskd_api
 
 if TYPE_CHECKING:
-    from rymparser.settings import AppSettings
+    from rymscraper.settings import AppSettings
 
 logger = logging.getLogger(__name__)
 

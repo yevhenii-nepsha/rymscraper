@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
-from rymparser.models import Album, ReleaseType
+from rymscraper.models import Album, ReleaseType
 
 SECTION_CODE_TO_TYPE: dict[str, ReleaseType] = {
     "s": ReleaseType.ALBUM,

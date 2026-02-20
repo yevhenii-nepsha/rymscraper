@@ -10,7 +10,7 @@ from pathlib import Path
 
 def _default_config_path() -> Path:
     """Return the default config file path."""
-    return Path.home() / ".config" / "rymparser" / "config.toml"
+    return Path.home() / ".config" / "rymscraper" / "config.toml"
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def load_settings(
 
     Args:
         config_path: Path to config.toml. Uses default
-            (~/.config/rymparser/config.toml) if None.
+            (~/.config/rymscraper/config.toml) if None.
 
     Returns:
         Frozen AppSettings instance.

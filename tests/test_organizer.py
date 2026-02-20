@@ -6,8 +6,8 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from rymparser.models import Album
-from rymparser.organizer import (
+from rymscraper.models import Album
+from rymscraper.organizer import (
     _album_target_dir,
     _build_dir_to_album_map,
     _organize_album,
@@ -377,7 +377,7 @@ class TestWaitAndOrganize:
             ],
         ]
 
-        with patch("rymparser.organizer.time.sleep"):
+        with patch("rymscraper.organizer.time.sleep"):
             moved, skipped = wait_and_organize(
                 mock_client,
                 results,
@@ -452,9 +452,9 @@ class TestWaitAndOrganize:
         # logger.warning in else clause.
         times = [0, 0, 0, 100, 100]
         with (
-            patch("rymparser.organizer.time.sleep"),
+            patch("rymscraper.organizer.time.sleep"),
             patch(
-                "rymparser.organizer.time.time",
+                "rymscraper.organizer.time.time",
                 side_effect=times,
             ),
         ):
@@ -486,9 +486,9 @@ class TestWaitAndOrganize:
         mock_client = MagicMock()
 
         with (
-            patch("rymparser.organizer.time.sleep"),
+            patch("rymscraper.organizer.time.sleep"),
             patch(
-                "rymparser.organizer.time.time",
+                "rymscraper.organizer.time.time",
                 side_effect=[0, 100],
             ),
         ):
@@ -595,7 +595,7 @@ class TestWaitAndOrganize:
             ],
         ]
 
-        with patch("rymparser.organizer.time.sleep"):
+        with patch("rymscraper.organizer.time.sleep"):
             moved, skipped = wait_and_organize(
                 mock_client,
                 results,
@@ -653,9 +653,9 @@ class TestWaitAndOrganize:
 
         times = [0, 0, 0, 100, 100]
         with (
-            patch("rymparser.organizer.time.sleep"),
+            patch("rymscraper.organizer.time.sleep"),
             patch(
-                "rymparser.organizer.time.time",
+                "rymscraper.organizer.time.time",
                 side_effect=times,
             ),
         ):

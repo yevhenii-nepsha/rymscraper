@@ -1,7 +1,7 @@
 services:
   slskd:
     image: slskd/slskd:latest
-    container_name: rymparser-slskd
+    container_name: rymscraper-slskd
     ports:
       - "5030:5030"
       - "50300:50300"
@@ -16,7 +16,7 @@ services:
       SLSKD_API_KEY: "role=ReadWrite;${SLSKD_API_KEY}"
     restart: unless-stopped
 
-  rymparser:
+  rymscraper:
     build: .
     depends_on:
       - slskd

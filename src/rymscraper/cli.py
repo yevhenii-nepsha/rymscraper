@@ -1,4 +1,4 @@
-"""CLI entry point for rymparser with subcommands."""
+"""CLI entry point for rymscraper with subcommands."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from rymparser.artist_parser import DEFAULT_TYPES
-from rymparser.browser import FetchError, fetch_all_pages
-from rymparser.config import ScraperConfig
-from rymparser.models import Album, ReleaseType
-from rymparser.parser import extract_slug
-from rymparser.settings import AppSettings, load_settings
+from rymscraper.artist_parser import DEFAULT_TYPES
+from rymscraper.browser import FetchError, fetch_all_pages
+from rymscraper.config import ScraperConfig
+from rymscraper.models import Album, ReleaseType
+from rymscraper.parser import extract_slug
+from rymscraper.settings import AppSettings, load_settings
 
 logger = logging.getLogger(__name__)
 
@@ -216,10 +216,10 @@ def _cmd_parse(
     )
 
     if is_artist_url(args.url):
-        from rymparser.artist_parser import (
+        from rymscraper.artist_parser import (
             extract_artist_slug,
         )
-        from rymparser.browser import fetch_artist_page
+        from rymscraper.browser import fetch_artist_page
 
         types = _parse_types(getattr(args, "types", None))
         try:
@@ -284,12 +284,12 @@ def _cmd_search(
         args: Parsed CLI arguments.
         settings: Application settings.
     """
-    from rymparser.search import (
+    from rymscraper.search import (
         build_query,
         filter_responses,
         rank_results,
     )
-    from rymparser.slskd_client import (
+    from rymscraper.slskd_client import (
         SlskdError,
         create_client,
         search_albums,
@@ -479,8 +479,8 @@ def _cmd_download(
         args: Parsed CLI arguments.
         settings: Application settings.
     """
-    from rymparser.organizer import wait_and_organize
-    from rymparser.slskd_client import (
+    from rymscraper.organizer import wait_and_organize
+    from rymscraper.slskd_client import (
         SlskdError,
         create_client,
         enqueue_download,
@@ -610,7 +610,7 @@ def main(argv: list[str] | None = None) -> None:
         _cmd_parse(args, settings)
         # Create temp album file for search
         if is_artist_url(args.url):
-            from rymparser.artist_parser import (
+            from rymscraper.artist_parser import (
                 extract_artist_slug,
             )
 
