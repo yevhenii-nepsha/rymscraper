@@ -373,6 +373,7 @@ def _cmd_search(
         filtered = filter_responses(
             responses,
             settings,
+            album,
         )
         ranked = rank_results(filtered, settings)
 

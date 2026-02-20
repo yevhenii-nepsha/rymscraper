@@ -217,6 +217,129 @@ class TestFilterResponses:
         results = filter_responses(responses, settings)
         assert len(results) == 1
 
+    def test_rejects_wrong_album_directory(self) -> None:
+        """Reject results where directory doesn't match album."""
+        album = Album("Neurosis", "Locust Star", "1996")
+        responses = [
+            _make_response(
+                "u1",
+                [
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "01.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "02.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "03.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                ],
+            ),
+        ]
+        settings = AppSettings(
+            preferred_formats=["flac", "mp3"],
+            min_files=3,
+        )
+        results = filter_responses(responses, settings, album)
+        assert len(results) == 0
+
+    def test_accepts_matching_album_directory(self) -> None:
+        """Accept results where directory matches album title."""
+        album = Album(
+            "Neurosis",
+            "Through Silver in Blood",
+            "1996",
+        )
+        responses = [
+            _make_response(
+                "u1",
+                [
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "01.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "02.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                    {
+                        "filename": (
+                            "@@u1\\Music\\Neurosis\\"
+                            "(1996) Through Silver in Blood\\"
+                            "03.flac"
+                        ),
+                        "size": 30_000_000,
+                        "extension": "flac",
+                        "bitRate": 1411,
+                        "length": 240,
+                        "sampleRate": 44100,
+                        "code": 1,
+                        "isLocked": False,
+                    },
+                ],
+            ),
+        ]
+        settings = AppSettings(
+            preferred_formats=["flac", "mp3"],
+            min_files=3,
+        )
+        results = filter_responses(responses, settings, album)
+        assert len(results) == 1
+        assert results[0].username == "u1"
+
 
 class TestRankResults:
     def test_prefers_flac_over_mp3(self) -> None:

@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Any
 
+from rymparser.models import Album  # noqa: TC001 (runtime usage)
+
 if TYPE_CHECKING:
-    from rymparser.models import Album
     from rymparser.settings import AppSettings
 
 logger = logging.getLogger(__name__)
@@ -92,15 +93,60 @@ def _avg_bitrate(
     return int(sum(rates) / len(rates)) if rates else 0
 
 
+_SKIP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "of",
+        "in",
+        "on",
+        "at",
+        "to",
+        "and",
+        "or",
+        "for",
+        "by",
+        "is",
+        "it",
+        "no",
+    }
+)
+
+
+def _matches_album(directory: str, album: Album) -> bool:
+    """Check if directory path contains album title keywords.
+
+    Splits the album title into words and checks that each
+    significant word (length > 2, not a stop word) appears
+    in the lowercased directory path.
+
+    Args:
+        directory: Normalized directory path from search result.
+        album: The album being searched for.
+
+    Returns:
+        True if all significant title words found in path.
+    """
+    path_lower = directory.lower()
+    words = album.title.lower().split()
+    significant = [w for w in words if len(w) > 2 and w not in _SKIP_WORDS]
+    if not significant:
+        return True
+    return all(w in path_lower for w in significant)
+
+
 def filter_responses(
     responses: list[dict[str, Any]],
     settings: AppSettings,
+    album: Album | None = None,
 ) -> list[AlbumSearchResult]:
     """Filter raw slskd responses into valid results.
 
     Args:
         responses: Raw search responses from slskd.
         settings: App settings with filter criteria.
+        album: Optional album to check directory relevance.
 
     Returns:
         List of AlbumSearchResult passing all filters.
@@ -150,7 +196,18 @@ def filter_responses(
             continue
 
         first_file = str(audio_files[0].get("filename", ""))
-        directory = str(PurePosixPath(first_file.replace("\\", "/")).parent)
+        directory = str(
+            PurePosixPath(first_file.replace("\\", "/")).parent,
+        )
+
+        if album and not _matches_album(directory, album):
+            logger.debug(
+                "Rejected %s: directory %r does not match album %r",
+                username,
+                directory,
+                album.title,
+            )
+            continue
 
         results.append(
             AlbumSearchResult(
@@ -160,7 +217,9 @@ def filter_responses(
                 format=fmt,
                 bitrate=bitrate,
                 upload_speed=int(resp.get("uploadSpeed", 0)),
-                has_free_slot=bool(resp.get("hasFreeUploadSlot", False)),
+                has_free_slot=bool(
+                    resp.get("hasFreeUploadSlot", False),
+                ),
                 queue_length=int(resp.get("queueLength", 0)),
             )
         )
