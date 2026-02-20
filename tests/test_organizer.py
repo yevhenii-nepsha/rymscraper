@@ -255,6 +255,35 @@ class TestBuildDirToAlbumMap:
         mapping = _build_dir_to_album_map(results)
         assert len(mapping) == 0
 
+    def test_builds_mapping_new_format(self) -> None:
+        results = {
+            "Artist - Album (2020)": {
+                "selected": 0,
+                "alternatives": [
+                    {
+                        "username": "u1",
+                        "directory": "Music\\Artist\\Album",
+                        "files": [],
+                        "format": "flac",
+                        "bitrate": 0,
+                    },
+                    {
+                        "username": "u2",
+                        "directory": "Music\\Artist\\Album2",
+                        "files": [],
+                        "format": "mp3",
+                        "bitrate": 320,
+                    },
+                ],
+            },
+        }
+        mapping = _build_dir_to_album_map(results)
+        assert "Music/Artist/Album" in mapping
+        assert mapping["Music/Artist/Album"] == (
+            "Artist - Album (2020)",
+            "Music\\Artist\\Album",
+        )
+
 
 class TestWaitAndOrganize:
     def test_organizes_incrementally(

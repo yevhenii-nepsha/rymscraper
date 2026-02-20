@@ -82,7 +82,17 @@ def _build_dir_to_album_map(
         if data is None:
             continue
         assert isinstance(data, dict)
-        remote_dir = str(data.get("directory", ""))
+        # New format: alternatives list
+        if "alternatives" in data:
+            idx = data.get("selected", 0)
+            alts = data["alternatives"]
+            if idx < len(alts):
+                remote_dir = str(alts[idx].get("directory", ""))
+            else:
+                continue
+        else:
+            # Legacy format
+            remote_dir = str(data.get("directory", ""))
         if not remote_dir:
             continue
         key = _normalize_path(remote_dir)
@@ -236,7 +246,7 @@ def wait_and_organize(
     deadline = time.time() + timeout
     while time.time() < deadline:
         transfers: list[dict[str, Any]] = client.transfers.get_all_downloads()
-        newly_done = _completed_directories(
+        newly_done, newly_failed = _completed_directories(
             transfers,
             usernames,
         )
@@ -254,6 +264,14 @@ def wait_and_organize(
             ):
                 moved += 1
             organized.add(dir_name)
+
+        for dir_name in newly_failed:
+            if dir_name not in organized:
+                logger.warning(
+                    "Download failed (rejected/errored): %s",
+                    dir_name,
+                )
+                organized.add(dir_name)
 
         if len(organized) >= total_expected:
             break
