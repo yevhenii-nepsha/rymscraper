@@ -1,12 +1,10 @@
 # rymscraper
 
-Parse [RateYourMusic](https://rateyourmusic.com) list pages into
-`Artist - Album (Year)` format for
-[Soulseek](http://www.slsknet.org/) search.
+Parse [RateYourMusic](https://rateyourmusic.com) list and artist pages into
+`Artist - Album (Year)` text files.
 
-Handles Cloudflare Turnstile anti-bot challenges using a headed
-Chromium browser with stealth plugins and a persistent browser
-profile.
+Handles Cloudflare Turnstile challenges using a headed Chromium browser
+with stealth plugins and a persistent browser profile.
 
 ## Installation
 
@@ -19,26 +17,46 @@ uv run playwright install chromium
 
 ## Usage
 
+### List pages
+
 ```bash
-# Basic — opens browser window, saves to <slug>.txt
+# Parse a list page — saves to <slug>.txt
 uv run rymscraper https://rateyourmusic.com/list/user/best-albums/
 
 # Custom output file
 uv run rymscraper -o albums.txt https://rateyourmusic.com/list/user/best-albums/
+```
 
-# Headless mode (may be blocked by Cloudflare)
-uv run rymscraper --headless https://rateyourmusic.com/list/user/best-albums/
+### Artist pages
 
-# Verbose logging
-uv run rymscraper -v https://rateyourmusic.com/list/user/best-albums/
+```bash
+# Parse artist discography (albums + EPs by default)
+uv run rymscraper https://rateyourmusic.com/artist/radiohead
+
+# Only albums
+uv run rymscraper --types album https://rateyourmusic.com/artist/radiohead
+
+# Albums, EPs, and singles
+uv run rymscraper --types album,ep,single https://rateyourmusic.com/artist/radiohead
+```
+
+Available `--types`: album, live_album, ep, single, compilation,
+music_video, appears_on, va_compilation, bootleg, video, additional.
+
+### Common flags
+
+```bash
+--headless    # Run browser without window (may be blocked by Cloudflare)
+-o FILE       # Custom output filename
+-v            # Verbose (debug) logging
 ```
 
 ## Output format
 
 ```
 Radiohead - OK Computer (1997)
-Björk - Homogenic (1997)
-Boards of Canada - Music Has the Right to Children (1998)
+Radiohead - Kid A (2000)
+Radiohead - In Rainbows (2007)
 ```
 
 ## Development
