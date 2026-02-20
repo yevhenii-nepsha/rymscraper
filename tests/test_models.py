@@ -2,7 +2,7 @@
 
 import pytest
 
-from rymparser.models import Album
+from rymparser.models import Album, ReleaseType
 
 
 class TestAlbum:
@@ -52,3 +52,36 @@ class TestAlbumFromLine:
     def test_invalid_format(self) -> None:
         with pytest.raises(ValueError, match="parse"):
             Album.from_line("no dash here")
+
+
+class TestReleaseType:
+    def test_release_type_enum_values(self) -> None:
+        assert ReleaseType.ALBUM.value == "album"
+        assert ReleaseType.EP.value == "ep"
+        assert ReleaseType.LIVE_ALBUM.value == "live_album"
+
+    def test_album_release_type_default_none(self) -> None:
+        album = Album(
+            artist="Neurosis",
+            title="Souls at Zero",
+            year="1992",
+        )
+        assert album.release_type is None
+
+    def test_album_with_release_type(self) -> None:
+        album = Album(
+            artist="Neurosis",
+            title="Souls at Zero",
+            year="1992",
+            release_type=ReleaseType.ALBUM,
+        )
+        assert album.release_type == ReleaseType.ALBUM
+
+    def test_album_str_ignores_release_type(self) -> None:
+        album = Album(
+            artist="Neurosis",
+            title="Souls at Zero",
+            year="1992",
+            release_type=ReleaseType.EP,
+        )
+        assert str(album) == "Neurosis - Souls at Zero (1992)"

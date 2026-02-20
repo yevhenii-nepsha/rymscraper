@@ -4,6 +4,23 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from enum import Enum
+
+
+class ReleaseType(Enum):
+    """Release type categories from RYM artist pages."""
+
+    ALBUM = "album"
+    LIVE_ALBUM = "live_album"
+    EP = "ep"
+    SINGLE = "single"
+    COMPILATION = "compilation"
+    MUSIC_VIDEO = "music_video"
+    APPEARS_ON = "appears_on"
+    VA_COMPILATION = "va_compilation"
+    BOOTLEG = "bootleg"
+    VIDEO = "video"
+    ADDITIONAL = "additional"
 
 
 @dataclass(frozen=True)
@@ -13,6 +30,7 @@ class Album:
     artist: str
     title: str
     year: str
+    release_type: ReleaseType | None = None
 
     def __str__(self) -> str:
         """Format as 'Artist - Title (Year)' for Soulseek search."""
