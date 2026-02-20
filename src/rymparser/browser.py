@@ -85,16 +85,20 @@ def _click_turnstile(
 def _wait_for_content(
     page: Page,
     config: ScraperConfig,
+    selector: str | None = None,
 ) -> bool:
     """Wait for RYM content, handling Cloudflare Turnstile.
 
     Args:
         page: The Playwright page object.
         config: Scraper configuration with timeouts.
+        selector: CSS selector to wait for. Falls back
+            to ``config.content_selector`` when *None*.
 
     Returns:
         True if content appeared, False on timeout.
     """
+    effective_selector = selector or config.content_selector
     deadline = time.time() + config.content_timeout
     turnstile_attempts = 0
     poll_ms = int(config.selector_poll_interval * 1000)
@@ -106,7 +110,7 @@ def _wait_for_content(
 
         try:
             page.wait_for_selector(
-                config.content_selector,
+                effective_selector,
                 timeout=min(poll_ms, remaining_ms),
             )
             return True
