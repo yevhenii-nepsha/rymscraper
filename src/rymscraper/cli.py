@@ -16,7 +16,9 @@ from rymscraper.browser import (
     FetchError,
     fetch_all_pages,
     fetch_artist_page,
+    fetch_chart_pages,
 )
+from rymscraper.chart_parser import extract_chart_slug
 from rymscraper.config import ScraperConfig
 from rymscraper.models import ReleaseType
 from rymscraper.parser import extract_slug
@@ -50,6 +52,19 @@ def is_artist_url(url: str) -> bool:
     """
     path = urlparse(url).path
     return path.startswith("/artist/")
+
+
+def is_chart_url(url: str) -> bool:
+    """Check if URL points to a chart page.
+
+    Args:
+        url: A RateYourMusic URL.
+
+    Returns:
+        True if the URL path starts with /charts/.
+    """
+    path = urlparse(url).path
+    return path.startswith("/charts/")
 
 
 def _parse_types(
@@ -92,12 +107,13 @@ def parse_args(
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Parse RYM list/artist pages into 'Artist - Album (Year)' format."
+            "Parse RYM list/artist/chart pages"
+            " into 'Artist - Album (Year)' format."
         ),
     )
     parser.add_argument(
         "url",
-        help="RYM list or artist URL to parse",
+        help="RYM list, artist, or chart URL to parse",
     )
     parser.add_argument(
         "-o",
@@ -167,6 +183,20 @@ def main(argv: list[str] | None = None) -> None:
         except FetchError as exc:
             logger.error(
                 "Failed to fetch artist page: %s",
+                exc,
+            )
+            sys.exit(1)
+    elif is_chart_url(args.url):
+        slug = extract_chart_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
+        try:
+            albums = fetch_chart_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch chart: %s",
                 exc,
             )
             sys.exit(1)

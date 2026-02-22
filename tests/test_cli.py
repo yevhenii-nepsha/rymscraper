@@ -8,6 +8,7 @@ from rymscraper.artist_parser import DEFAULT_TYPES
 from rymscraper.cli import (
     _parse_types,
     is_artist_url,
+    is_chart_url,
     parse_args,
     validate_url,
 )
@@ -104,3 +105,23 @@ class TestParseTypes:
                 ReleaseType.EP,
             }
         )
+
+
+class TestIsChartUrl:
+    def test_chart_url(self) -> None:
+        url = "https://rateyourmusic.com/charts/top/album/all-time/g:deathrock/"
+        assert is_chart_url(url) is True
+
+    def test_chart_url_with_page(self) -> None:
+        url = (
+            "https://rateyourmusic.com/charts/top/album/all-time/g:deathrock/2/"
+        )
+        assert is_chart_url(url) is True
+
+    def test_list_url_not_chart(self) -> None:
+        url = "https://rateyourmusic.com/list/user/test"
+        assert is_chart_url(url) is False
+
+    def test_artist_url_not_chart(self) -> None:
+        url = "https://rateyourmusic.com/artist/neurosis"
+        assert is_chart_url(url) is False
