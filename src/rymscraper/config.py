@@ -35,6 +35,8 @@ class ScraperConfig:
     # CSS selectors
     content_selector: str = ".list_artist, .list_album"
     artist_content_selector: str = ".section_artist_discography"
+    chart_content_selector: str = ".page_charts_section_charts_items"
+    chart_page_load_wait: float = 15.0
     artist_selector: str = ".list_artist"
     album_selector: str = ".list_album"
     year_selector: str = ".rel_date"
