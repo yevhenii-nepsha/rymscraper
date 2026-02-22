@@ -2,9 +2,10 @@
 
 ## Project Overview
 
-**rymscraper** parses RateYourMusic (RYM) list and artist pages into
-`Artist - Album (Year)` text files. It uses a headed Chromium browser
-with stealth plugins to bypass Cloudflare Turnstile protection.
+**rymscraper** parses RateYourMusic (RYM) list, artist, and chart
+pages into `Artist - Album (Year)` text files. It uses a headed
+Chromium browser with stealth plugins to bypass Cloudflare Turnstile
+protection.
 
 ## Tech Stack
 
@@ -26,6 +27,7 @@ src/rymscraper/
   config.py            # ScraperConfig (frozen dataclass, all settings)
   parser.py            # Pure HTML parsing for list pages
   artist_parser.py     # Pure HTML parsing for artist pages
+  chart_parser.py      # Pure HTML parsing for chart pages
   browser.py           # Playwright automation + Cloudflare bypass
   cli.py               # CLI entry point (argparse, no subcommands)
 
@@ -33,9 +35,10 @@ tests/
   fixtures/            # Static HTML files for parser tests
   test_models.py       # 10 tests
   test_parser.py       # 9 tests
-  test_cli.py          # 17 tests
-  test_browser.py      # 7 tests (mocked Playwright)
+  test_cli.py          # 21 tests
+  test_browser.py      # 8 tests (mocked Playwright)
   test_artist_parser.py # 10 tests (1 conditionally-skipped smoke)
+  test_chart_parser.py # 9 tests
 ```
 
 ## Architecture
@@ -46,21 +49,23 @@ The codebase follows a strict layered design:
    `__str__` and `from_line()` classmethod. `ReleaseType` enum with
    11 values (album, ep, single, compilation, etc.).
 
-2. **Parsers** (`parser.py`, `artist_parser.py`): Pure functions that
-   accept HTML strings and return `list[Album]`. No I/O, no browser
-   dependency. List parser handles paginated list pages. Artist parser
-   handles discography pages with section-based filtering by release
-   type.
+2. **Parsers** (`parser.py`, `artist_parser.py`, `chart_parser.py`):
+   Pure functions that accept HTML strings and return `list[Album]`.
+   No I/O, no browser dependency. List parser handles paginated list
+   pages. Artist parser handles discography pages with section-based
+   filtering by release type. Chart parser handles ranked chart pages
+   with nested `div` structure.
 
 3. **Browser** (`browser.py`): Playwright-based fetcher that launches
    a persistent Chromium context with stealth. Handles Cloudflare
    Turnstile via iframe click strategy. Calls parsers to return
-   albums. Exposes `fetch_all_pages()` for lists and
-   `fetch_artist_page()` for artists.
+   albums. Exposes `fetch_all_pages()` for lists,
+   `fetch_artist_page()` for artists, and `fetch_chart_pages()` for
+   charts (with 15s delay between pages to avoid rate limiting).
 
 4. **CLI** (`cli.py`): Single-command argparse interface. Auto-detects
-   artist vs list URL by path prefix (`/artist/`). Writes output to
-   `.txt` files.
+   page type by URL path prefix (`/artist/`, `/charts/`, or list as
+   fallback). Writes output to `.txt` files.
 
 5. **Config** (`config.py`): All browser timeouts, CSS selectors, and
    retry settings are centralized in `ScraperConfig`. Parsers and
@@ -84,7 +89,7 @@ The codebase follows a strict layered design:
 # Install dependencies
 uv sync && uv run playwright install chromium
 
-# Run tests (53 tests)
+# Run tests (67 tests)
 uv run pytest
 
 # Type checking
@@ -115,6 +120,18 @@ uv run rymscraper <url> [-o output.txt] [--headless] [--types album,ep] [-v]
   `span[class^="disco_year"]` for year.
 - "Show all" buttons (`span.disco_expand_section_link`) trigger AJAX
   loads; the browser module clicks them and waits.
+
+### Chart Pages
+- Chart items are `div.page_charts_section_charts_item` blocks.
+- Title: `a.page_charts_section_charts_item_link` >
+  `span.ui_name_locale_original`.
+- Artist: `div.page_charts_section_charts_item_credited_text` >
+  `a.artist` > `span.ui_name_locale_original`.
+- Date: `div.page_charts_section_charts_item_date` > `span` (contains
+  text like "24 March 1982"; year extracted via `\d{4}` regex).
+- Content container: `div.page_charts_section_charts_items`.
+- Pagination uses `a.ui_pagination_next` (shared with list pages).
+- A 15-second delay between pages avoids rate limiting.
 
 ### Cloudflare Bypass
 - RYM uses Cloudflare Turnstile. The browser module detects challenges
