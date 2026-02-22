@@ -89,3 +89,19 @@ def test_expand_sections_skips_when_no_button(
         "#disco_type_e span.disco_expand_section_link"
     )
     # No click should happen
+
+
+def test_wait_for_content_chart_selector(
+    mock_page: MagicMock,
+    config: ScraperConfig,
+) -> None:
+    """Chart content selector is passed through correctly."""
+    mock_page.wait_for_selector.return_value = True
+    result = _wait_for_content(
+        mock_page,
+        config,
+        selector=config.chart_content_selector,
+    )
+    assert result is True
+    call_args = mock_page.wait_for_selector.call_args
+    assert call_args[0][0] == ".page_charts_section_charts_items"
