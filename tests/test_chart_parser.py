@@ -1,5 +1,6 @@
 """Tests for chart page parser."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -85,3 +86,22 @@ def test_extract_chart_slug_year() -> None:
     url = "https://rateyourmusic.com/charts/top/album/2024/"
     slug = extract_chart_slug(url)
     assert "2024" in slug
+
+
+_DEATHROCK_HTML = "/tmp/rym_chart_deathrock.html"
+
+
+@pytest.mark.skipif(
+    not os.path.exists(_DEATHROCK_HTML),
+    reason="Real HTML file not available",
+)
+def test_parse_real_deathrock_chart() -> None:
+    """Smoke test with real deathrock chart page HTML."""
+    html = Path(_DEATHROCK_HTML).read_text()
+    albums = parse_chart_page(html)
+
+    assert len(albums) > 0
+    assert all(a.artist for a in albums)
+    assert all(a.title for a in albums)
+    # First album should be Christian Death
+    assert albums[0].artist == "Christian Death"
