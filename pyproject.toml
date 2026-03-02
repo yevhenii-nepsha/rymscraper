@@ -11,6 +11,9 @@ dependencies = [
     "lxml",
 ]
 
+[project.optional-dependencies]
+spotify = ["spotipy>=2.24.0"]
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -52,5 +55,6 @@ module = [
     "playwright_stealth.*",
     "bs4.*",
     "lxml.*",
+    "spotipy.*",
 ]
 ignore_missing_imports = true

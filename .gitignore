@@ -28,3 +28,6 @@ downloads/
 .env
 .env.*
 !.env.example
+
+# Spotify OAuth token cache
+.spotify_cache
