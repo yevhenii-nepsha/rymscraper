@@ -24,6 +24,7 @@ from rymscraper.parser import (
     find_next_page_url,
     parse_page,
 )
+from rymscraper.spotify import sync_albums_to_spotify
 
 __all__ = [
     "DEFAULT_TYPES",
@@ -43,4 +44,5 @@ __all__ = [
     "parse_artist_page",
     "parse_chart_page",
     "parse_page",
+    "sync_albums_to_spotify",
 ]

@@ -29,16 +29,18 @@ src/rymscraper/
   artist_parser.py     # Pure HTML parsing for artist pages
   chart_parser.py      # Pure HTML parsing for chart pages
   browser.py           # Playwright automation + Cloudflare bypass
+  spotify.py           # Spotify search, playlist creation, OAuth
   cli.py               # CLI entry point (argparse, no subcommands)
 
 tests/
   fixtures/            # Static HTML files for parser tests
   test_models.py       # 10 tests
   test_parser.py       # 9 tests
-  test_cli.py          # 21 tests
+  test_cli.py          # 25 tests
   test_browser.py      # 8 tests (mocked Playwright)
   test_artist_parser.py # 10 tests (1 conditionally-skipped smoke)
   test_chart_parser.py # 9 tests
+  test_spotify.py      # 13 tests (mocked spotipy)
 ```
 
 ## Architecture
@@ -72,6 +74,14 @@ The codebase follows a strict layered design:
    browser functions accept config as an optional parameter with
    sensible defaults.
 
+6. **Spotify** (`spotify.py`): Optional integration using `spotipy`.
+   Searches Spotify for parsed albums, adds found albums' tracks to a
+   playlist named after the list/artist/chart slug. OAuth Authorization
+   Code Flow with token caching in `.spotify_cache`. Activated via
+   `--spotify` CLI flag. Requires `SPOTIPY_CLIENT_ID`,
+   `SPOTIPY_CLIENT_SECRET`, `SPOTIPY_REDIRECT_URI` environment
+   variables. Install with `uv pip install rymscraper[spotify]`.
+
 ## Coding Conventions
 
 - **Line length**: 80 characters max
@@ -89,7 +99,10 @@ The codebase follows a strict layered design:
 # Install dependencies
 uv sync && uv run playwright install chromium
 
-# Run tests (67 tests)
+# Install with Spotify support
+uv sync --extra spotify
+
+# Run tests (83 tests)
 uv run pytest
 
 # Type checking
@@ -99,7 +112,7 @@ uv run mypy src/
 uv run ruff check .
 
 # Run the tool
-uv run rymscraper <url> [-o output.txt] [--headless] [--types album,ep] [-v]
+uv run rymscraper <url> [-o output.txt] [--headless] [--spotify] [--types album,ep] [-v]
 ```
 
 ## RYM Page Structure (Domain Knowledge)
