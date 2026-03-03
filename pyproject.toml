@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-spotify = ["spotipy>=2.24.0"]
+spotify = ["spotipy>=2.24.0", "python-dotenv>=1.0.0"]
 
 [dependency-groups]
 dev = [
@@ -56,5 +56,6 @@ module = [
     "bs4.*",
     "lxml.*",
     "spotipy.*",
+    "dotenv.*",
 ]
 ignore_missing_imports = true

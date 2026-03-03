@@ -39,6 +39,19 @@ class TestGetSpotifyClient:
             auth_manager=mock_auth,
         )
 
+    @patch("rymscraper.spotify.SpotifyOAuth")
+    @patch("rymscraper.spotify.spotipy.Spotify")
+    @patch("dotenv.load_dotenv")
+    def test_loads_dotenv(
+        self,
+        mock_load_dotenv: MagicMock,
+        mock_spotify_cls: MagicMock,
+        mock_oauth_cls: MagicMock,
+    ) -> None:
+        """Loads .env file before creating client."""
+        get_spotify_client()
+        mock_load_dotenv.assert_called_once()
+
 
 class TestFindAlbum:
     def test_album_found(self) -> None:

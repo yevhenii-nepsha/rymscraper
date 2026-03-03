@@ -20,13 +20,17 @@ CACHE_PATH = ".spotify_cache"
 def get_spotify_client() -> spotipy.Spotify:
     """Create an authenticated Spotify client.
 
-    Uses SpotifyOAuth with environment variables
-    SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, and
-    SPOTIPY_REDIRECT_URI.
+    Loads credentials from ``.env`` file (if present),
+    then reads SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET,
+    and SPOTIPY_REDIRECT_URI from environment variables.
 
     Returns:
         Authenticated spotipy.Spotify client.
     """
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
     auth_manager = SpotifyOAuth(
         scope=SCOPES,
         cache_path=CACHE_PATH,
