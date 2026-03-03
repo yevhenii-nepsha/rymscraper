@@ -140,6 +140,15 @@ def parse_args(
         action="store_true",
         help="Enable verbose (debug) logging",
     )
+    parser.add_argument(
+        "--spotify",
+        action="store_true",
+        help=(
+            "Search albums in Spotify and add found "
+            "ones to a playlist. Requires spotipy: "
+            "uv pip install rymscraper[spotify]"
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -201,11 +210,8 @@ def main(argv: list[str] | None = None) -> None:
             )
             sys.exit(1)
     else:
-        output_file = (
-            Path(args.output)
-            if args.output
-            else Path(f"{extract_slug(args.url)}.txt")
-        )
+        slug = extract_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
         try:
             albums = fetch_all_pages(
                 args.url,
@@ -221,6 +227,35 @@ def main(argv: list[str] | None = None) -> None:
     if not albums:
         logger.error("No albums found. Check debug_page.html if created.")
         sys.exit(1)
+
+    if args.spotify:
+        try:
+            from rymscraper.spotify import (
+                sync_albums_to_spotify,
+            )
+        except ImportError:
+            logger.error(
+                "spotipy not installed. Run: uv pip install rymscraper[spotify]"
+            )
+            sys.exit(1)
+
+        try:
+            albums = sync_albums_to_spotify(
+                albums,
+                slug,
+                args.url,
+            )
+        except Exception:
+            logger.exception("Spotify sync failed")
+            sys.exit(1)
+
+        if not albums:
+            logger.info(
+                "All albums added to Spotify playlist"
+                " '%s'. No .txt file created.",
+                slug,
+            )
+            return
 
     try:
         output_file.write_text(

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from rymscraper.artist_parser import DEFAULT_TYPES
@@ -13,6 +16,9 @@ from rymscraper.cli import (
     validate_url,
 )
 from rymscraper.models import ReleaseType
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestValidateUrl:
@@ -125,3 +131,84 @@ class TestIsChartUrl:
     def test_artist_url_not_chart(self) -> None:
         url = "https://rateyourmusic.com/artist/neurosis"
         assert is_chart_url(url) is False
+
+
+class TestSpotifyFlag:
+    def test_spotify_flag_default_false(self) -> None:
+        url = "https://rateyourmusic.com/list/u/test/"
+        args = parse_args([url])
+        assert args.spotify is False
+
+    def test_spotify_flag_set(self) -> None:
+        url = "https://rateyourmusic.com/list/u/test/"
+        args = parse_args(["--spotify", url])
+        assert args.spotify is True
+
+
+class TestSpotifyIntegration:
+    @patch("rymscraper.cli.fetch_all_pages")
+    def test_spotify_filters_output(
+        self,
+        mock_fetch: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """When --spotify, only unfound albums are written."""
+        from rymscraper.models import Album
+
+        albums = [
+            Album(artist="A", title="Found", year="2000"),
+            Album(artist="B", title="Missing", year="2001"),
+        ]
+        mock_fetch.return_value = albums
+        out = tmp_path / "out.txt"
+
+        with patch(
+            "rymscraper.spotify.sync_albums_to_spotify",
+        ) as mock_sync:
+            mock_sync.return_value = [albums[1]]
+            from rymscraper.cli import main
+
+            main(
+                [
+                    "--spotify",
+                    "-o",
+                    str(out),
+                    "https://rateyourmusic.com/list/u/test/",
+                ]
+            )
+            mock_sync.assert_called_once()
+
+        content = out.read_text()
+        assert "Missing" in content
+        assert "Found" not in content
+
+    @patch("rymscraper.cli.fetch_all_pages")
+    def test_spotify_all_found_no_txt(
+        self,
+        mock_fetch: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """When all albums found in Spotify, skip .txt."""
+        from rymscraper.models import Album
+
+        mock_fetch.return_value = [
+            Album(artist="A", title="X", year="2000"),
+        ]
+        out = tmp_path / "out.txt"
+
+        with patch(
+            "rymscraper.spotify.sync_albums_to_spotify",
+        ) as mock_sync:
+            mock_sync.return_value = []
+            from rymscraper.cli import main
+
+            main(
+                [
+                    "--spotify",
+                    "-o",
+                    str(out),
+                    "https://rateyourmusic.com/list/u/test/",
+                ]
+            )
+
+        assert not out.exists()
