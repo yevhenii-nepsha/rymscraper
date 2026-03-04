@@ -17,8 +17,12 @@ from rymscraper.browser import (
     fetch_all_pages,
     fetch_artist_page,
     fetch_chart_pages,
+    fetch_collection_pages,
 )
 from rymscraper.chart_parser import extract_chart_slug
+from rymscraper.collection_parser import (
+    extract_collection_slug,
+)
 from rymscraper.config import ScraperConfig
 from rymscraper.models import ReleaseType
 from rymscraper.parser import extract_slug
@@ -67,6 +71,19 @@ def is_chart_url(url: str) -> bool:
     return path.startswith("/charts/")
 
 
+def is_collection_url(url: str) -> bool:
+    """Check if URL points to a collection page.
+
+    Args:
+        url: A RateYourMusic URL.
+
+    Returns:
+        True if the URL path starts with /collection/.
+    """
+    path = urlparse(url).path
+    return path.startswith("/collection/")
+
+
 def _parse_types(
     raw: str | None,
 ) -> frozenset[ReleaseType]:
@@ -107,13 +124,14 @@ def parse_args(
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Parse RYM list/artist/chart pages"
-            " into 'Artist - Album (Year)' format."
+            "Parse RYM list/artist/chart/collection"
+            " pages into 'Artist - Album (Year)'"
+            " format."
         ),
     )
     parser.add_argument(
         "url",
-        help="RYM list, artist, or chart URL to parse",
+        help="RYM list, artist, chart, or collection URL",
     )
     parser.add_argument(
         "-o",
@@ -206,6 +224,20 @@ def main(argv: list[str] | None = None) -> None:
         except FetchError as exc:
             logger.error(
                 "Failed to fetch chart: %s",
+                exc,
+            )
+            sys.exit(1)
+    elif is_collection_url(args.url):
+        slug = extract_collection_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
+        try:
+            albums = fetch_collection_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch collection: %s",
                 exc,
             )
             sys.exit(1)

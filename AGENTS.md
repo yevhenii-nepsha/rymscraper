@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-**rymscraper** parses RateYourMusic (RYM) list, artist, and chart
-pages into `Artist - Album (Year)` text files. It uses a headed
-Chromium browser with stealth plugins to bypass Cloudflare Turnstile
-protection.
+**rymscraper** parses RateYourMusic (RYM) list, artist, chart, and
+collection pages into `Artist - Album (Year)` text files. It uses a
+headed Chromium browser with stealth plugins to bypass Cloudflare
+Turnstile protection.
 
 ## Tech Stack
 
@@ -28,6 +28,7 @@ src/rymscraper/
   parser.py            # Pure HTML parsing for list pages
   artist_parser.py     # Pure HTML parsing for artist pages
   chart_parser.py      # Pure HTML parsing for chart pages
+  collection_parser.py # Pure HTML parsing for collection pages
   browser.py           # Playwright automation + Cloudflare bypass
   spotify.py           # Spotify search, playlist creation, OAuth
   cli.py               # CLI entry point (argparse, no subcommands)
@@ -36,11 +37,12 @@ tests/
   fixtures/            # Static HTML files for parser tests
   test_models.py       # 10 tests
   test_parser.py       # 9 tests
-  test_cli.py          # 25 tests
+  test_cli.py          # 30 tests
   test_browser.py      # 8 tests (mocked Playwright)
   test_artist_parser.py # 10 tests (1 conditionally-skipped smoke)
   test_chart_parser.py # 9 tests
-  test_spotify.py      # 13 tests (mocked spotipy)
+  test_collection_parser.py # 10 tests (1 conditionally-skipped smoke)
+  test_spotify.py      # 14 tests (mocked spotipy)
 ```
 
 ## Architecture
@@ -51,23 +53,27 @@ The codebase follows a strict layered design:
    `__str__` and `from_line()` classmethod. `ReleaseType` enum with
    11 values (album, ep, single, compilation, etc.).
 
-2. **Parsers** (`parser.py`, `artist_parser.py`, `chart_parser.py`):
-   Pure functions that accept HTML strings and return `list[Album]`.
-   No I/O, no browser dependency. List parser handles paginated list
-   pages. Artist parser handles discography pages with section-based
-   filtering by release type. Chart parser handles ranked chart pages
-   with nested `div` structure.
+2. **Parsers** (`parser.py`, `artist_parser.py`, `chart_parser.py`,
+   `collection_parser.py`): Pure functions that accept HTML strings
+   and return `list[Album]`. No I/O, no browser dependency. List
+   parser handles paginated list pages. Artist parser handles
+   discography pages with section-based filtering by release type.
+   Chart parser handles ranked chart pages with nested `div`
+   structure. Collection parser handles user collection pages with
+   `div.or_q_albumartist` blocks.
 
 3. **Browser** (`browser.py`): Playwright-based fetcher that launches
    a persistent Chromium context with stealth. Handles Cloudflare
    Turnstile via iframe click strategy. Calls parsers to return
    albums. Exposes `fetch_all_pages()` for lists,
-   `fetch_artist_page()` for artists, and `fetch_chart_pages()` for
-   charts (with 15s delay between pages to avoid rate limiting).
+   `fetch_artist_page()` for artists, `fetch_chart_pages()` for
+   charts (with 15s delay between pages to avoid rate limiting),
+   and `fetch_collection_pages()` for user collections.
 
 4. **CLI** (`cli.py`): Single-command argparse interface. Auto-detects
-   page type by URL path prefix (`/artist/`, `/charts/`, or list as
-   fallback). Writes output to `.txt` files.
+   page type by URL path prefix (`/artist/`, `/charts/`,
+   `/collection/`, or list as fallback). Writes output to `.txt`
+   files.
 
 5. **Config** (`config.py`): All browser timeouts, CSS selectors, and
    retry settings are centralized in `ScraperConfig`. Parsers and
@@ -102,7 +108,7 @@ uv sync && uv run playwright install chromium
 # Install with Spotify support
 uv sync --extra spotify
 
-# Run tests (83 tests)
+# Run tests (101 tests)
 uv run pytest
 
 # Type checking
@@ -146,6 +152,18 @@ uv run rymscraper <url> [-o output.txt] [--headless] [--spotify] [--types album,
 - Pagination uses `a.ui_pagination_next` (shared with list pages).
 - A 15-second delay between pages avoids rate limiting.
 
+### Collection Pages
+- Collection items are `<tr>` rows with `id="page_catalog_item_{id}"`.
+- Data cell: `td.or_q_albumartist_td` > `div.or_q_albumartist`.
+- Artist: `a.artist` inside the albumartist div.
+- Title: `a.album` (inside `<i>` tag) inside the albumartist div.
+- Year: `span.smallgray` containing `(YYYY)` text; year extracted
+  via `\d{4}` regex.
+- Content selector: `div.or_q_albumartist`.
+- Pagination uses `a.navlinknext` (shared with list pages).
+- URL patterns: `/collection/{username}/`, optionally with rating
+  filter (`/r5.0`), sorting (`/strm_a`), or page number (`/2`).
+
 ### Cloudflare Bypass
 - RYM uses Cloudflare Turnstile. The browser module detects challenges
   by page title ("just a moment"), then clicks the Turnstile iframe
@@ -161,6 +179,9 @@ uv run rymscraper <url> [-o output.txt] [--headless] [--spotify] [--types album,
 - `test_artist_parser.py` has one smoke test that requires a real HTML
   file at `/tmp/rym_artist_neurosis.html`; it is skipped when the file
   is absent.
+- `test_collection_parser.py` has one smoke test that requires a real
+  HTML file at `/tmp/rym_collection_stonepig.html`; it is skipped
+  when the file is absent.
 - Test config sets `pythonpath = ["src"]` in pyproject.toml. LSP tools
   may show false-positive import errors on test files — ignore them.
 - HTML fixtures in `tests/fixtures/` are minimal extracts of real RYM
