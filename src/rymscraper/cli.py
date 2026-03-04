@@ -16,6 +16,12 @@ from rymscraper.browser import (
     FetchError,
     fetch_all_pages,
     fetch_artist_page,
+    fetch_chart_pages,
+    fetch_collection_pages,
+)
+from rymscraper.chart_parser import extract_chart_slug
+from rymscraper.collection_parser import (
+    extract_collection_slug,
 )
 from rymscraper.config import ScraperConfig
 from rymscraper.models import ReleaseType
@@ -50,6 +56,32 @@ def is_artist_url(url: str) -> bool:
     """
     path = urlparse(url).path
     return path.startswith("/artist/")
+
+
+def is_chart_url(url: str) -> bool:
+    """Check if URL points to a chart page.
+
+    Args:
+        url: A RateYourMusic URL.
+
+    Returns:
+        True if the URL path starts with /charts/.
+    """
+    path = urlparse(url).path
+    return path.startswith("/charts/")
+
+
+def is_collection_url(url: str) -> bool:
+    """Check if URL points to a collection page.
+
+    Args:
+        url: A RateYourMusic URL.
+
+    Returns:
+        True if the URL path starts with /collection/.
+    """
+    path = urlparse(url).path
+    return path.startswith("/collection/")
 
 
 def _parse_types(
@@ -92,12 +124,14 @@ def parse_args(
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Parse RYM list/artist pages into 'Artist - Album (Year)' format."
+            "Parse RYM list/artist/chart/collection"
+            " pages into 'Artist - Album (Year)'"
+            " format."
         ),
     )
     parser.add_argument(
         "url",
-        help="RYM list or artist URL to parse",
+        help="RYM list, artist, chart, or collection URL",
     )
     parser.add_argument(
         "-o",
@@ -123,6 +157,15 @@ def parse_args(
         "--verbose",
         action="store_true",
         help="Enable verbose (debug) logging",
+    )
+    parser.add_argument(
+        "--spotify",
+        action="store_true",
+        help=(
+            "Search albums in Spotify and add found "
+            "ones to a playlist. Requires spotipy: "
+            "uv pip install rymscraper[spotify]"
+        ),
     )
     return parser.parse_args(argv)
 
@@ -170,12 +213,37 @@ def main(argv: list[str] | None = None) -> None:
                 exc,
             )
             sys.exit(1)
+    elif is_chart_url(args.url):
+        slug = extract_chart_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
+        try:
+            albums = fetch_chart_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch chart: %s",
+                exc,
+            )
+            sys.exit(1)
+    elif is_collection_url(args.url):
+        slug = extract_collection_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
+        try:
+            albums = fetch_collection_pages(
+                args.url,
+                config=config,
+            )
+        except FetchError as exc:
+            logger.error(
+                "Failed to fetch collection: %s",
+                exc,
+            )
+            sys.exit(1)
     else:
-        output_file = (
-            Path(args.output)
-            if args.output
-            else Path(f"{extract_slug(args.url)}.txt")
-        )
+        slug = extract_slug(args.url)
+        output_file = Path(args.output) if args.output else Path(f"{slug}.txt")
         try:
             albums = fetch_all_pages(
                 args.url,
@@ -191,6 +259,35 @@ def main(argv: list[str] | None = None) -> None:
     if not albums:
         logger.error("No albums found. Check debug_page.html if created.")
         sys.exit(1)
+
+    if args.spotify:
+        try:
+            from rymscraper.spotify import (
+                sync_albums_to_spotify,
+            )
+        except ImportError:
+            logger.error(
+                "spotipy not installed. Run: uv pip install rymscraper[spotify]"
+            )
+            sys.exit(1)
+
+        try:
+            albums = sync_albums_to_spotify(
+                albums,
+                slug,
+                args.url,
+            )
+        except Exception:
+            logger.exception("Spotify sync failed")
+            sys.exit(1)
+
+        if not albums:
+            logger.info(
+                "All albums added to Spotify playlist"
+                " '%s'. No .txt file created.",
+                slug,
+            )
+            return
 
     try:
         output_file.write_text(

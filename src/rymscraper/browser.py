@@ -16,6 +16,8 @@ from rymscraper.artist_parser import (
     SECTION_CODE_TO_TYPE,
     parse_artist_page,
 )
+from rymscraper.chart_parser import parse_chart_page
+from rymscraper.collection_parser import parse_collection_page
 from rymscraper.config import ScraperConfig
 from rymscraper.models import ReleaseType  # noqa: TC001
 from rymscraper.parser import find_next_page_url, parse_page
@@ -252,6 +254,234 @@ def fetch_all_pages(
 
                 logger.info(
                     "Found %d albums on page %d",
+                    len(albums),
+                    page_num,
+                )
+                all_albums.extend(albums)
+
+                next_url = find_next_page_url(
+                    html,
+                    current_url,
+                    config,
+                )
+                if next_url and next_url != current_url:
+                    current_url = next_url
+                    page_num += 1
+                    time.sleep(config.page_load_wait)
+                else:
+                    current_url = None
+        finally:
+            context.close()
+
+    return all_albums
+
+
+def fetch_chart_pages(
+    url: str,
+    config: ScraperConfig | None = None,
+) -> list[Album]:
+    """Scrape all pages of a RYM chart.
+
+    Opens URL with Playwright, handles Cloudflare, parses
+    all paginated pages. Uses a longer delay between pages
+    to avoid rate limiting.
+
+    Args:
+        url: The RYM chart URL to scrape.
+        config: Scraper configuration. Uses defaults
+            if None.
+
+    Returns:
+        List of Album objects from all chart pages.
+
+    Raises:
+        FetchError: If content cannot be loaded.
+    """
+    if config is None:
+        config = ScraperConfig()
+
+    all_albums: list[Album] = []
+    output_dir = Path.cwd()
+
+    stealth = Stealth()
+    with stealth.use_sync(sync_playwright()) as pw:
+        logger.info(
+            "Launching browser (headless=%s)",
+            config.headless,
+        )
+        context = pw.chromium.launch_persistent_context(
+            user_data_dir=str(config.browser_data_dir),
+            headless=config.headless,
+            viewport={
+                "width": config.viewport_width,
+                "height": config.viewport_height,
+            },
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        try:
+            page = context.new_page()
+            current_url: str | None = url
+            page_num = 1
+
+            while current_url:
+                logger.info(
+                    "Fetching chart page %d: %s",
+                    page_num,
+                    current_url,
+                )
+                try:
+                    page.goto(
+                        current_url,
+                        wait_until="domcontentloaded",
+                    )
+                except PlaywrightTimeout as exc:
+                    raise FetchError(
+                        f"Navigation to {current_url} timed out: {exc}"
+                    ) from exc
+
+                if not _wait_for_content(
+                    page,
+                    config,
+                    selector=(config.chart_content_selector),
+                ):
+                    _save_debug_html(page, output_dir)
+                    raise FetchError(
+                        "Timed out waiting for chart"
+                        f" content on page {page_num}."
+                        " May be blocked by Cloudflare."
+                    )
+
+                html = page.content()
+                albums = parse_chart_page(html)
+
+                if not albums:
+                    logger.warning(
+                        "No albums on chart page %d",
+                        page_num,
+                    )
+                    if page_num == 1:
+                        _save_debug_html(page, output_dir)
+                    break
+
+                logger.info(
+                    "Found %d albums on chart page %d",
+                    len(albums),
+                    page_num,
+                )
+                all_albums.extend(albums)
+
+                next_url = find_next_page_url(
+                    html,
+                    current_url,
+                    config,
+                )
+                if next_url and next_url != current_url:
+                    current_url = next_url
+                    page_num += 1
+                    logger.info(
+                        "Waiting %.0fs before next page",
+                        config.chart_page_load_wait,
+                    )
+                    time.sleep(
+                        config.chart_page_load_wait,
+                    )
+                else:
+                    current_url = None
+        finally:
+            context.close()
+
+    return all_albums
+
+
+def fetch_collection_pages(
+    url: str,
+    config: ScraperConfig | None = None,
+) -> list[Album]:
+    """Scrape all pages of a RYM user collection.
+
+    Opens URL with Playwright, handles Cloudflare, parses
+    all paginated pages. Uses the same delay between pages
+    as list scraping.
+
+    Args:
+        url: The RYM collection URL to scrape.
+        config: Scraper configuration. Uses defaults
+            if None.
+
+    Returns:
+        List of Album objects from all collection pages.
+
+    Raises:
+        FetchError: If content cannot be loaded.
+    """
+    if config is None:
+        config = ScraperConfig()
+
+    all_albums: list[Album] = []
+    output_dir = Path.cwd()
+
+    stealth = Stealth()
+    with stealth.use_sync(sync_playwright()) as pw:
+        logger.info(
+            "Launching browser (headless=%s)",
+            config.headless,
+        )
+        context = pw.chromium.launch_persistent_context(
+            user_data_dir=str(config.browser_data_dir),
+            headless=config.headless,
+            viewport={
+                "width": config.viewport_width,
+                "height": config.viewport_height,
+            },
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        try:
+            page = context.new_page()
+            current_url: str | None = url
+            page_num = 1
+
+            while current_url:
+                logger.info(
+                    "Fetching collection page %d: %s",
+                    page_num,
+                    current_url,
+                )
+                try:
+                    page.goto(
+                        current_url,
+                        wait_until="domcontentloaded",
+                    )
+                except PlaywrightTimeout as exc:
+                    raise FetchError(
+                        f"Navigation to {current_url} timed out: {exc}"
+                    ) from exc
+
+                if not _wait_for_content(
+                    page,
+                    config,
+                    selector=(config.collection_content_selector),
+                ):
+                    _save_debug_html(page, output_dir)
+                    raise FetchError(
+                        "Timed out waiting for collection"
+                        f" content on page {page_num}."
+                        " May be blocked by Cloudflare."
+                    )
+
+                html = page.content()
+                albums = parse_collection_page(html)
+
+                if not albums:
+                    logger.warning(
+                        "No albums on collection page %d",
+                        page_num,
+                    )
+                    if page_num == 1:
+                        _save_debug_html(page, output_dir)
+                    break
+
+                logger.info(
+                    "Found %d albums on collection page %d",
                     len(albums),
                     page_num,
                 )
